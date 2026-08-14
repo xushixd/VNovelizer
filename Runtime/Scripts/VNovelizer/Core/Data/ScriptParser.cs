@@ -47,10 +47,19 @@ public static class ScriptParser
             return null;
         }
 
-        // JSON 以 { 或 [ 开头，其余按 CSV 解析
-        string trimmed = textAsset.text.TrimStart();
-        bool isJson = trimmed.StartsWith("{") || trimmed.StartsWith("[");
-        return isJson ? ParseJson(textAsset.text) : ParseCsv(textAsset.text);
+        return ParseText(textAsset.text);
+    }
+
+    /// <summary>
+    /// 解析剧本文本（根据内容自动判断 CSV / JSON）。供编辑器预览和导入校验复用。
+    /// </summary>
+    public static ScriptData ParseText(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return null;
+
+        string trimmed = content.TrimStart();
+        bool isJson = trimmed.StartsWith("{");
+        return isJson ? ParseJson(content) : ParseCsv(content);
     }
 
     /// <summary>
