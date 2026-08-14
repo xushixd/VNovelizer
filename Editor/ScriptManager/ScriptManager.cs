@@ -232,7 +232,7 @@ public class ScriptManagerWindow : EditorWindow
     private void LoadTextPreview(FileInfo file)
     {
         ScriptParser.ScriptData data = ScriptParser.ParseText(File.ReadAllText(file.FullName));
-        if (data == null) throw new System.InvalidDataException("不是有效的剧本 JSON/CSV。 ");
+        if (data == null) throw new InvalidDataException("不是有效的剧本 JSON/CSV。");
 
         var tableData = data.Lines.Select(ToPreviewRow).ToList();
         BuildPreview(Headers.ToList(), tableData);
