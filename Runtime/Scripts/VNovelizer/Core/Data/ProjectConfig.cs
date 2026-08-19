@@ -119,6 +119,9 @@ public class VNProjectConfig : ScriptableObject
     [Tooltip("GalleryPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Gallery)")]
     public string UI_GalleryPath = "VNovelizerRes/VNPrefabs/UI/Gallery";
 
+    [Tooltip("RouteMapPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/RouteMap)")]
+    public string UI_RouteMapPath = "VNovelizerRes/VNPrefabs/UI/RouteMap";
+
     [Tooltip("LoadingProgressPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Loading)")]
     public string UI_LoadingPath = "VNovelizerRes/VNPrefabs/UI/Loading";
 
@@ -130,6 +133,9 @@ public class VNProjectConfig : ScriptableObject
 
     [Tooltip("场景数据容器在Resources下的相对路径 (例如: VNovelizerRes/GalleryContent/Scene)")]
     public string Scene_DataPath = "VNovelizerRes/GalleryContent/Scene";
+
+    [Tooltip("路线图数据容器在Resources下的相对路径 (例如: VNovelizerRes/GalleryContent/RouteMap)")]
+    public string RouteMap_DataPath = "VNovelizerRes/GalleryContent/RouteMap";
 
     [Header("=== UI 默认资源 (UI Default Resources) ===")]
     [Tooltip("默认姓名框 Sprite（当角色没有配置 SpeakerBox 时使用）")]
@@ -145,6 +151,8 @@ public class VNProjectConfig : ScriptableObject
     public string SoundObjPath = "VNovelizerRes/VNPrefabs/Gameplay/SoundObj";
     [Tooltip("VideoObj在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/Gameplay/VideoObj")]
     public string VideoObjPath = "VNovelizerRes/VNPrefabs/Gameplay/VideoObj";
+    [Tooltip("视频跳过按钮在Resources下的相对路径")]
+    public string UI_VideoSkipPath = "VNovelizerRes/VNPrefabs/UI/Video/VideoSkipBtn";
 
     [Header("=== 游戏启动设置 ===")]
     [Tooltip("主界面点击新游戏时加载的默认剧本名称 (不含扩展名，例如: Test101)")]

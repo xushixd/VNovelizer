@@ -59,6 +59,7 @@ public class VNProjectConfigEditor : Editor
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_MainMenuPath"), "游戏主界面"));
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_PausePath"), "暂停面板"));
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_GalleryPath"), "画廊面板"));
+        uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_RouteMapPath"), "路线图面板"));
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_LoadingPath"), "加载面板"));
         root.Add(uiFoldout);
 
@@ -66,6 +67,7 @@ public class VNProjectConfigEditor : Editor
         var objFoldout = new Foldout { text = "音效/视频Obj路径", value = false };
         objFoldout.Add(new PropertyField(serializedObject.FindProperty("SoundObjPath"), "音效Obj"));
         objFoldout.Add(new PropertyField(serializedObject.FindProperty("VideoObjPath"), "视频Obj"));
+        objFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_VideoSkipPath"), "视频跳过按钮"));
         root.Add(objFoldout);
 
         // 画廊内容路径 (Foldout)
@@ -73,6 +75,7 @@ public class VNProjectConfigEditor : Editor
         galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("CG_DataPath"), "CG数据容器路径"));
         galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("Music_DataPath"), "音乐数据容器路径"));
         galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("Scene_DataPath"), "场景数据容器路径"));
+        galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("RouteMap_DataPath"), "路线图数据容器路径"));
         root.Add(galleryFoldout);
 
         // 5. 游戏启动设置 (Foldout)

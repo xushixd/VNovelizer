@@ -234,8 +234,24 @@ public class ScriptManagerWindow : EditorWindow
         ScriptParser.ScriptData data = ScriptParser.ParseText(File.ReadAllText(file.FullName));
         if (data == null) throw new InvalidDataException("不是有效的剧本 JSON/CSV。");
 
-        var tableData = data.Lines.Select(ToPreviewRow).ToList();
-        BuildPreview(Headers.ToList(), tableData);
+        if (data.IsChapter)
+        {
+            var tableData = new List<List<string>>();
+            foreach (SegmentData segment in data.Chapter.segments)
+            {
+                if (segment == null || segment.content == null) continue;
+                foreach (DialogueContent content in segment.content)
+                {
+                    if (content == null) continue;
+                    tableData.Add(ToPreviewRow(content.ToStoryLine()));
+                }
+            }
+            BuildPreview(Headers.ToList(), tableData);
+            return;
+        }
+
+        var lineRows = data.Lines.Select(ToPreviewRow).ToList();
+        BuildPreview(Headers.ToList(), lineRows);
     }
 
     private static List<string> ToPreviewRow(StoryLine line)
@@ -289,12 +305,7 @@ public class ScriptManagerWindow : EditorWindow
             return;
         }
 
-        var line = new StoryLine
-        {
-            ID = "1001", Speaker = "", HeadProfile = "", CharLeft = "", CharMid = "", CharRight = "",
-            Text = "", Background = "", BGM = "", Voice = "", Command = "", Note = ""
-        };
-        File.WriteAllText(path, ScriptParser.SerializeJsonLines(new List<StoryLine> { line }), new UTF8Encoding(false));
+        File.WriteAllText(path, ScriptParser.SerializeChapter(ChapterData.CreateSample()), new UTF8Encoding(false));
         AssetDatabase.Refresh();
         RefreshList();
         statusLabel.text = $"已创建：{Path.GetFileName(path)}";
@@ -373,10 +384,14 @@ public class ScriptManagerWindow : EditorWindow
             return;
         }
 
-        if (extension == ".json" && ScriptParser.TryParseJsonLines(File.ReadAllText(source)) == null)
+        if (extension == ".json")
         {
-            EditorUtility.DisplayDialog("导入失败", "JSON 文件不包含有效的 lines 数组。", "确定");
-            return;
+            string json = File.ReadAllText(source);
+            if (ScriptParser.TryParseChapter(json) == null && ScriptParser.TryParseJsonLines(json) == null)
+            {
+                EditorUtility.DisplayDialog("导入失败", "JSON 不是 Chapter（segments/content）或旧版 lines 剧本。", "确定");
+                return;
+            }
         }
 
         if (!ConfirmOverwrite(target)) return;

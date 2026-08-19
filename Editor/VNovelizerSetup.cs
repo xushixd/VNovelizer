@@ -118,10 +118,12 @@ public class VNovelizerSetup : EditorWindow
         CreateDir(assetsRoot, "Resources/VNovelizerRes/GalleryContent/CG");
         CreateDir(assetsRoot, "Resources/VNovelizerRes/GalleryContent/Music");
         CreateDir(assetsRoot, "Resources/VNovelizerRes/GalleryContent/Scene");
+        CreateDir(assetsRoot, "Resources/VNovelizerRes/GalleryContent/RouteMap");
 
         CreateDataContainer<CGDataContainer>("Assets/Resources/VNovelizerRes/GalleryContent/CG/CGDataContainer.asset");
         CreateDataContainer<MusicDataContainer>("Assets/Resources/VNovelizerRes/GalleryContent/Music/MusicDataContainer.asset");
         CreateDataContainer<SceneDataContainer>("Assets/Resources/VNovelizerRes/GalleryContent/Scene/SceneDataContainer.asset");
+        RouteMapPrefabBuilder.EnsureInProject();
 
         string configPath = "Assets/Resources/VNProjectConfig.asset";
         if (!Directory.Exists(assetsRoot + "/Resources")) Directory.CreateDirectory(assetsRoot + "/Resources");

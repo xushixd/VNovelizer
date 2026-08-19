@@ -1,0 +1,224 @@
+{
+  "id": "001",
+  "title": "第一章",
+  "entrySegmentId": "001-0001",
+  "segments": [
+    {
+      "id": "001-0001",
+      "title": "教室",
+      "content": [
+        {
+          "id": "001-0001-00000",
+          "type": "Video",
+          "videoAssetId": "op",
+          "playback": "once",
+          "skippable": true,
+          "options": []
+        },
+        {
+          "id": "001-0001-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "",
+            "emotionId": ""
+          },
+          "text": "放学后的教室只剩下风声。",
+          "stageCharacters": [],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": []
+        },
+        {
+          "id": "001-0001-00002",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Amy",
+            "emotionId": "Normal"
+          },
+          "text": "你还没走吗？",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Amy",
+              "emotionId": "Normal"
+            }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": []
+        },
+        {
+          "id": "001-0001-00003",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Doctor",
+            "emotionId": "Calm"
+          },
+          "text": "我有件事想问你。",
+          "stageCharacters": [
+            {
+              "slot": "left",
+              "characterId": "Amy",
+              "emotionId": "Normal"
+            },
+            {
+              "slot": "right",
+              "characterId": "Doctor",
+              "emotionId": "Calm"
+            }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": []
+        }
+      ],
+      "nextSegmentId": "001-0002"
+    },
+    {
+      "id": "001-0002",
+      "title": "是否相信",
+      "content": [
+        {
+          "id": "001-0002-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Doctor",
+            "emotionId": "Calm"
+          },
+          "text": "请相信我。",
+          "stageCharacters": [
+            {
+              "slot": "left",
+              "characterId": "Amy",
+              "emotionId": "Thinking"
+            },
+            {
+              "slot": "right",
+              "characterId": "Doctor",
+              "emotionId": "Calm"
+            }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": []
+        },
+        {
+          "id": "001-0002-00002",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Amy",
+            "emotionId": "Thinking"
+          },
+          "text": "我应该相信他吗？",
+          "stageCharacters": [
+            {
+              "slot": "left",
+              "characterId": "Amy",
+              "emotionId": "Thinking"
+            },
+            {
+              "slot": "right",
+              "characterId": "Doctor",
+              "emotionId": "Calm"
+            }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": [
+            {
+              "id": "001-0002-00002-01",
+              "text": "好，我信你",
+              "result": "001-0003"
+            },
+            {
+              "id": "001-0002-00002-02",
+              "text": "现在还不行",
+              "result": "001-0004"
+            }
+          ]
+        }
+      ],
+      "nextSegmentId": ""
+    },
+    {
+      "id": "001-0003",
+      "title": "相信",
+      "content": [
+        {
+          "id": "001-0003-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Amy",
+            "emotionId": "Smile"
+          },
+          "text": "好。我信你。",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Amy",
+              "emotionId": "Smile"
+            }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": []
+        }
+      ],
+      "nextSegmentId": "001-0005"
+    },
+    {
+      "id": "001-0004",
+      "title": "拒绝",
+      "content": [
+        {
+          "id": "001-0004-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Amy",
+            "emotionId": "Serious"
+          },
+          "text": "现在还不行。",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Amy",
+              "emotionId": "Serious"
+            }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "",
+          "options": []
+        }
+      ],
+      "nextSegmentId": "001-0005"
+    },
+    {
+      "id": "001-0005",
+      "title": "离开",
+      "content": [
+        {
+          "id": "001-0005-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "",
+            "emotionId": ""
+          },
+          "text": "走廊的灯一盏盏暗下去。",
+          "stageCharacters": [],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "",
+          "options": []
+        }
+      ],
+      "nextSegmentId": ""
+    }
+  ]
+}

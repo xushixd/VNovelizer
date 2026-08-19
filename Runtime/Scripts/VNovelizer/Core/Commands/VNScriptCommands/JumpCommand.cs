@@ -16,20 +16,11 @@ namespace VNovelizer.Core.Commands
 
             string targetID = args.Trim();
             VNManager manager = VNManager.GetInstance();
-
-            // 直接操作 Manager 的数据
-            if (manager.LineIDIndexMap.TryGetValue(targetID, out int targetIndex))
-            {
-                manager.FastForwardToLine(targetIndex, ignoreChoice: true);
-                manager.CurrentLineIndex = targetIndex;
-                
+            if (manager.JumpToContentOrLine(targetID))
                 return true;
-            }
-            else
-            {
-                Debug.LogError($"[JumpCommand] 未找到指定的行ID: {targetID}");
-                return false;
-            }
+
+            Debug.LogError($"[JumpCommand] 未找到指定的 Content/行 ID: {targetID}");
+            return false;
         }
     }
 }

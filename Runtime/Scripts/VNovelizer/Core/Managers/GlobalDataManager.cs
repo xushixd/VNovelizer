@@ -155,6 +155,10 @@ public class GlobalDataManager : BaseManager<GlobalDataManager>
         {
             globalData.UnlockedMusic = new List<string>();
         }
+        if (globalData.UnlockedRouteNodes == null)
+        {
+            globalData.UnlockedRouteNodes = new List<string>();
+        }
     }
     
     /// <summary>
@@ -253,6 +257,33 @@ public class GlobalDataManager : BaseManager<GlobalDataManager>
     {
         EnsureInitialized();
         return globalData.UnlockedScenes.Contains(sceneID);
+    }
+
+    /// <summary>
+    /// 解锁路线图节点。
+    /// </summary>
+    public void UnlockRoute(string nodeId)
+    {
+        EnsureInitialized();
+        if (string.IsNullOrEmpty(nodeId)) return;
+        if (globalData.UnlockedRouteNodes == null)
+            globalData.UnlockedRouteNodes = new List<string>();
+        if (!globalData.UnlockedRouteNodes.Contains(nodeId))
+        {
+            globalData.UnlockedRouteNodes.Add(nodeId);
+            SaveGlobalData();
+            EventCenter.GetInstance().EventTrigger("RouteNodeUnlocked", nodeId);
+        }
+    }
+
+    /// <summary>
+    /// 检查路线图节点是否已解锁。
+    /// </summary>
+    public bool IsRouteUnlocked(string nodeId)
+    {
+        EnsureInitialized();
+        if (string.IsNullOrEmpty(nodeId) || globalData.UnlockedRouteNodes == null) return false;
+        return globalData.UnlockedRouteNodes.Contains(nodeId);
     }
     
     /// <summary>

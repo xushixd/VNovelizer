@@ -20,4 +20,9 @@ public class StoryLine
     public string Voice;
     public string Command;
     public string Note;
+
+    /// <summary>
+    /// 新版 Dialogue：本行是完整画面/音频状态，空值表示没有，不沿用上一行。
+    /// </summary>
+    public bool CompleteState;
 }

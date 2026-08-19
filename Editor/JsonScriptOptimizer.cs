@@ -44,10 +44,21 @@ public static class JsonScriptOptimizer
 
         try
         {
-            List<StoryLine> lines = ScriptParser.TryParseJsonLines(File.ReadAllText(file));
+            string text = File.ReadAllText(file);
+            ChapterData chapter = ScriptParser.TryParseChapter(text);
+            if (chapter != null)
+            {
+                string pretty = ScriptParser.SerializeChapter(chapter);
+                if (pretty == text) return true;
+                File.WriteAllText(file, pretty, new UTF8Encoding(false));
+                changed = true;
+                return true;
+            }
+
+            List<StoryLine> lines = ScriptParser.TryParseJsonLines(text);
             if (lines == null)
             {
-                error = "JSON 不包含有效的 lines 数组。";
+                error = "JSON 不是 Chapter 或旧版 lines 剧本。";
                 return false;
             }
 

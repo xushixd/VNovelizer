@@ -10,18 +10,15 @@ public static class ScriptParser
 {
     public class ScriptData
     {
+        public ChapterData Chapter;
         public List<StoryLine> Lines = new List<StoryLine>();
         public Dictionary<string, int> IDMap = new Dictionary<string, int>();
+        public bool IsChapter { get { return Chapter != null; } }
     }
 
     /// <summary>
-    /// JSON 剧本容器。标准结构为 {"lines":[...]}。
-    /// 每行字段名与 StoryLine 一致（大小写敏感）：
-    /// ID, Speaker, HeadProfile, CharLeft, CharMid, CharRight,
-    /// Text, Background, BGM, Voice, Command, Note
-    /// 示例：
-    /// { "lines": [ { "ID":"1001", "Speaker":"Amy", "CharLeft":"Amy_Normal",
-    ///   "Text":"你好", "Background":"School_Day", "BGM":"Theme" } ] }
+    /// JSON 剧本容器。新版是 Chapter → Segment → Content，没有 line。
+    /// 旧版 CSV / {"lines":[StoryLine]} 仍可解析。
     /// </summary>
     [System.Serializable]
     public class JsonScriptContainer
@@ -122,10 +119,17 @@ public static class ScriptParser
     {
         ScriptData data = new ScriptData();
 
+        ChapterData chapter = TryParseChapter(jsonContent);
+        if (chapter != null)
+        {
+            data.Chapter = chapter;
+            return data;
+        }
+
         List<StoryLine> lines = TryParseJsonLines(jsonContent);
         if (lines == null)
         {
-            Debug.LogError("[ScriptParser] JSON 剧本缺少 lines 数组，请使用 {\"lines\":[...]} 结构");
+            Debug.LogError("[ScriptParser] JSON 剧本无法识别。新版请使用 Chapter.segments.content，旧版使用 {\"lines\":[...]}");
             return null;
         }
 
@@ -134,11 +138,75 @@ public static class ScriptParser
             if (line == null) continue;
             data.Lines.Add(line);
             if (!string.IsNullOrEmpty(line.ID))
-            {
                 data.IDMap[line.ID] = data.Lines.Count - 1;
-            }
         }
         return data;
+    }
+
+    public static ChapterData TryParseChapter(string jsonText)
+    {
+        if (string.IsNullOrEmpty(jsonText)) return null;
+
+        JsonData root;
+        try { root = JsonMapper.ToObject(jsonText); }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[ScriptParser] JSON 解析失败: " + e.Message);
+            return null;
+        }
+
+        if (root == null || !root.IsObject) return null;
+        if (!root.ContainsKey("segments") || root["segments"] == null || !root["segments"].IsArray)
+            return null;
+
+        var chapter = new ChapterData
+        {
+            id = FirstLegacy(root, "id", "ID"),
+            title = DialogueContent.ReadString(root, "title"),
+            entrySegmentId = DialogueContent.ReadString(root, "entrySegmentId"),
+            segments = new List<SegmentData>()
+        };
+        if (string.IsNullOrEmpty(chapter.id)) chapter.id = "001";
+
+        JsonData segments = root["segments"];
+        for (int i = 0; i < segments.Count; i++)
+        {
+            JsonData item = segments[i];
+            if (item == null || !item.IsObject) continue;
+            chapter.segments.Add(ReadSegment(item));
+        }
+
+        if (chapter.segments.Count == 0) return null;
+        if (string.IsNullOrEmpty(chapter.entrySegmentId))
+            chapter.entrySegmentId = chapter.segments[0].id;
+        return chapter;
+    }
+
+    public static string SerializeChapter(ChapterData chapter)
+    {
+        JsonData root = new JsonData();
+        root.SetJsonType(JsonType.Object);
+        if (chapter == null) chapter = new ChapterData();
+        root["id"] = chapter.id ?? "";
+        root["title"] = chapter.title ?? "";
+        root["entrySegmentId"] = chapter.entrySegmentId ?? "";
+
+        JsonData segmentArray = new JsonData();
+        segmentArray.SetJsonType(JsonType.Array);
+        if (chapter.segments != null)
+        {
+            for (int i = 0; i < chapter.segments.Count; i++)
+            {
+                SegmentData segment = chapter.segments[i];
+                if (segment == null) continue;
+                segmentArray.Add(WriteSegment(segment));
+            }
+        }
+        root["segments"] = segmentArray;
+
+        var writer = new JsonWriter { PrettyPrint = true };
+        JsonMapper.ToJson(root, writer);
+        return writer.ToString();
     }
 
     /// <summary>
@@ -149,10 +217,10 @@ public static class ScriptParser
     {
         if (string.IsNullOrEmpty(jsonText)) return null;
 
-        JsonScriptContainer container;
+        JsonData root;
         try
         {
-            container = JsonMapper.ToObject<JsonScriptContainer>(jsonText);
+            root = JsonMapper.ToObject(jsonText);
         }
         catch (System.Exception e)
         {
@@ -160,19 +228,181 @@ public static class ScriptParser
             return null;
         }
 
-        if (container == null || container.lines == null) return null;
-        return container.lines;
+        if (root == null || !root.IsObject) return null;
+
+        List<JsonData> items = CollectDialogueItems(root);
+        if (items == null) return null;
+
+        var lines = new List<StoryLine>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            JsonData item = items[i];
+            if (item == null || !item.IsObject) continue;
+
+            if (DialogueContent.LooksLikeDialogue(item))
+            {
+                DialogueContent dialogue = DialogueContent.FromJson(item);
+                List<string> issues = dialogue.Validate();
+                for (int n = 0; n < issues.Count; n++)
+                    Debug.LogError("[ScriptParser] " + issues[n]);
+                lines.Add(dialogue.ToStoryLine());
+            }
+            else
+            {
+                lines.Add(ReadLegacyStoryLine(item));
+            }
+        }
+
+        return lines;
     }
 
     /// <summary>
-    /// 将剧本行序列化为带缩进的 JSON 文本（{"lines":[...]}）。
+    /// 将剧本行序列化为带缩进的 JSON。CompleteState 行写出新版 Dialogue 结构。
     /// </summary>
     public static string SerializeJsonLines(List<StoryLine> lines)
     {
-        var container = new JsonScriptContainer { lines = lines };
+        JsonData root = new JsonData();
+        root.SetJsonType(JsonType.Object);
+        JsonData array = new JsonData();
+        array.SetJsonType(JsonType.Array);
+
+        if (lines != null)
+        {
+            for (int i = 0; i < lines.Count; i++)
+            {
+                StoryLine line = lines[i];
+                if (line == null) continue;
+                if (line.CompleteState)
+                    array.Add(DialogueContent.FromStoryLine(line).ToJsonData());
+                else
+                    array.Add(WriteLegacyStoryLine(line));
+            }
+        }
+
+        root["lines"] = array;
         var writer = new JsonWriter { PrettyPrint = true };
-        JsonMapper.ToJson(container, writer);
+        JsonMapper.ToJson(root, writer);
         return writer.ToString();
+    }
+
+    private static SegmentData ReadSegment(JsonData item)
+    {
+        var segment = new SegmentData
+        {
+            id = FirstLegacy(item, "id", "ID"),
+            title = DialogueContent.ReadString(item, "title"),
+            nextSegmentId = DialogueContent.ReadString(item, "nextSegmentId"),
+            content = new List<DialogueContent>()
+        };
+
+        if (item.ContainsKey("content") && item["content"] != null && item["content"].IsArray)
+        {
+            JsonData contents = item["content"];
+            for (int i = 0; i < contents.Count; i++)
+            {
+                JsonData content = contents[i];
+                if (content == null || !content.IsObject) continue;
+                string type = DialogueContent.ReadString(content, "type");
+                if (!string.IsNullOrEmpty(type) && !DialogueContent.IsDialogueType(type) && !DialogueContent.IsVideoType(type))
+                {
+                    Debug.LogWarning("[ScriptParser] 暂未播放的 Content 类型: " + type + " (" + FirstLegacy(content, "id", "ID") + ")");
+                    continue;
+                }
+                DialogueContent storyContent = DialogueContent.FromJson(content);
+                List<string> issues = storyContent.Validate();
+                for (int n = 0; n < issues.Count; n++)
+                    Debug.LogError("[ScriptParser] " + issues[n]);
+                segment.content.Add(storyContent);
+            }
+        }
+
+        return segment;
+    }
+
+    private static JsonData WriteSegment(SegmentData segment)
+    {
+        JsonData item = new JsonData();
+        item.SetJsonType(JsonType.Object);
+        item["id"] = segment.id ?? "";
+        item["title"] = segment.title ?? "";
+
+        JsonData contentArray = new JsonData();
+        contentArray.SetJsonType(JsonType.Array);
+        if (segment.content != null)
+        {
+            for (int i = 0; i < segment.content.Count; i++)
+            {
+                if (segment.content[i] != null)
+                    contentArray.Add(segment.content[i].ToJsonData());
+            }
+        }
+        item["content"] = contentArray;
+        item["nextSegmentId"] = segment.nextSegmentId ?? "";
+        return item;
+    }
+
+    private static List<JsonData> CollectDialogueItems(JsonData root)
+    {
+        if (root.ContainsKey("lines") && root["lines"] != null && root["lines"].IsArray)
+            return ToList(root["lines"]);
+        return null;
+    }
+
+    private static List<JsonData> ToList(JsonData array)
+    {
+        var items = new List<JsonData>();
+        for (int i = 0; i < array.Count; i++)
+            items.Add(array[i]);
+        return items;
+    }
+
+    private static StoryLine ReadLegacyStoryLine(JsonData item)
+    {
+        return new StoryLine
+        {
+            ID = FirstLegacy(item, "ID", "id"),
+            Speaker = DialogueContent.ReadString(item, "Speaker"),
+            HeadProfile = DialogueContent.ReadString(item, "HeadProfile"),
+            CharLeft = DialogueContent.ReadString(item, "CharLeft"),
+            CharMid = DialogueContent.ReadString(item, "CharMid"),
+            CharRight = DialogueContent.ReadString(item, "CharRight"),
+            Text = FirstLegacy(item, "Text", "text"),
+            Background = DialogueContent.ReadString(item, "Background"),
+            BGM = DialogueContent.ReadString(item, "BGM"),
+            Voice = DialogueContent.ReadString(item, "Voice"),
+            Command = DialogueContent.ReadString(item, "Command"),
+            Note = DialogueContent.ReadString(item, "Note"),
+            CompleteState = false
+        };
+    }
+
+    private static JsonData WriteLegacyStoryLine(StoryLine line)
+    {
+        JsonData item = new JsonData();
+        item.SetJsonType(JsonType.Object);
+        item["ID"] = line.ID ?? "";
+        item["Speaker"] = line.Speaker ?? "";
+        item["HeadProfile"] = line.HeadProfile ?? "";
+        item["CharLeft"] = line.CharLeft ?? "";
+        item["CharMid"] = line.CharMid ?? "";
+        item["CharRight"] = line.CharRight ?? "";
+        item["Text"] = line.Text ?? "";
+        item["Background"] = line.Background ?? "";
+        item["BGM"] = line.BGM ?? "";
+        item["Voice"] = line.Voice ?? "";
+        item["Command"] = line.Command ?? "";
+        item["Note"] = line.Note ?? "";
+        return item;
+    }
+
+    private static string FirstLegacy(JsonData item, params string[] keys)
+    {
+        for (int i = 0; i < keys.Length; i++)
+        {
+            string value = DialogueContent.ReadString(item, keys[i]);
+            if (!string.IsNullOrEmpty(value)) return value;
+        }
+        return "";
     }
 
     /// <summary>

@@ -38,9 +38,9 @@
 *   **状态预演 (Fast Forward)**：支持任意节点的存读档与跳转。系统会预演跳转点之前的剧本行以同步背景、BGM、立绘字典等；读档时另会用**存档中的立绘快照**与首帧逻辑对齐，避免「CSV 立绘列为空」误清空刚恢复的槽位。
 
 ### 🧩 完善的 UI 模块
-*   **系统面板**：内置 标题界面、存档/读档（含截图）、设置（音量/画质）、历史记录（回放语音）、画廊（CG/BGM/剧情回放）。
+*   **系统面板**：内置 标题界面、存档/读档（含截图）、设置（音量/画质）、历史记录（回放语音）、画廊（CG/BGM/剧情回放）、路线图（查看已解锁剧情分支）。
 *   **交互面板**：分支选项、双重确认弹窗、异步加载进度页。
-*   **可视化编辑器**：提供 Character Editor、Gallery Editor 等可视化工具，资源配置直观便捷。
+*   **可视化编辑器**：提供 Character Editor、Gallery Editor、Route Map Editor 等可视化工具，资源配置直观便捷。
 
 ---
 
@@ -118,6 +118,44 @@ VNovelizer 使用 `ScriptableObject` 管理角色资源，实现了逻辑 ID 与
 4.  编辑完成后保存 Excel。
 5.  在剧本管理器中点击 **"转换"**，生成游戏所需的 `.asset` 数据文件。
 
+剧本管理器也可以直接新建 **JSON 剧本**。新版是三层结构，没有 line：
+
+```text
+Chapter → Segment → Content
+```
+
+```json
+{
+  "id": "001",
+  "title": "第一章",
+  "entrySegmentId": "001-0001",
+  "segments": [
+    {
+      "id": "001-0001",
+      "title": "开场",
+      "content": [
+        {
+          "id": "001-0001-00001",
+          "type": "Dialogue",
+          "speaker": { "characterId": "Amy", "emotionId": "Smile" },
+          "text": "你好。",
+          "stageCharacters": [
+            { "slot": "middle", "characterId": "Amy", "emotionId": "Smile" }
+          ],
+          "backgroundAssetId": "School_Day",
+          "voiceAssetId": "",
+          "bgmAssetId": "Theme",
+          "options": []
+        }
+      ],
+      "nextSegmentId": ""
+    }
+  ]
+}
+```
+
+规则见仓库内 **`Docs/DIALOGUE_CONTENT_DESIGN.md`**：背景必填；说话人和文本可空；舞台位置只允许 `left/middle/right`；相同 BGM 继续播，空 BGM 停止。CSV 旧表的「空单元格沿用」规则不变。Dialogue / Video 的 `options` 会弹出原有选项面板，`result` 直接写目标 Segment ID。Video 的 `playback` 为 `once` 或 `loop`；`skippable` 默认 true，右上角用可定制跳过按钮。
+
 ### 剧本：行级状态规则（延续 vs 显式）
 
 以下约定直接影响画面与读档表现，建议策划与程序共同对齐。
@@ -164,6 +202,17 @@ VNovelizer 使用 `ScriptableObject` 管理角色资源，实现了逻辑 ID 与
 *   检查所有**同行含立绘类 Command** 的行是否已填写对应槽位。
 
 ---
+
+### 路线图（主界面）
+
+路线图和画廊并列，用来展示玩家已经走过的剧情节点和尚未开启的分支。
+
+1. 打开 **VNovelizer → 路线图编辑器**，配置章节、事件节点、分岔点和连线。
+2. 节点 ID 与剧本指令 `unlockroute(节点ID)` 对应；勾选「开局解锁」的节点无需指令。
+3. 主界面会自动出现「路线图」按钮（若预制体里没有，运行时会复制画廊按钮）。
+4. 玩家可横向拖动查看路线。未解锁事件显示为 `???`；已解锁且填写了剧本名的节点可以回放。
+
+首次使用可再跑一次 **一键初始化**，或打开路线图编辑器，系统会创建示例章节和面板预制体。
 
 ### 第三步：运行游戏 (Run)
 
@@ -243,6 +292,7 @@ VNManager.GetInstance().StartGame("Chapter1", "1005");
 *   `unlockcg(name)`: 解锁画廊中的 CG。
 *   `unlockmusic(name)`: 解锁画廊中的音乐。
 *   `unlockscene(name)`: 解锁回想场景。
+*   `unlockroute(id)`: 解锁路线图节点（与路线图编辑器中的节点 ID 对应）。
 *   `playsfx(name, times)`: 播放音效。
 *   `t_color(R,G,B)`: 修改当前行字体颜色，效果不继承。
 *   `t_size(font size)`: 修改当前行字体大小，效果不继承。

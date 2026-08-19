@@ -57,6 +57,8 @@
 | `SetBoolFlag` / `GetBoolFlag` | 布尔标志。 |
 | `SetIntFlag` / `GetIntFlag` | 整型标志。 |
 | `SetStringFlag` / `GetStringFlag` | 字符串标志。 |
+| `UnlockRoute(nodeId)` | 解锁路线图节点。 |
+| `IsRouteUnlocked(nodeId)` | 路线图节点是否已解锁。 |
 
 未定义时的默认返回值与 `GlobalDataManager` 行为一致（如 `GetBoolFlag` 为 `false`）。
 

@@ -1,6 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using System.IO;
 using VNovelizer.Core.Commands;
 using UnityEngine.SceneManagement;
@@ -19,6 +22,8 @@ public class VNManager : BaseManager<VNManager>
     // === 核心数据 ===
     public List<StoryLine> StoryLines { get; private set; } = new List<StoryLine>();
     public Dictionary<string, int> LineIDIndexMap { get; private set; } = new Dictionary<string, int>();
+    public ChapterData CurrentChapter { get; private set; }
+    public string CurrentSegmentId { get; private set; }
 
     // 当前行索引
     public int CurrentLineIndex { get; set; } = -1;
@@ -32,6 +37,8 @@ public class VNManager : BaseManager<VNManager>
     private Dictionary<string, float> currentCharactersScaleX = new Dictionary<string, float>();
     /// <summary>读档后首帧播放：CSV 立绘列为空时，使用存档恢复的 currentCharacters，避免误清空槽位。</summary>
     private bool _usePersistedCharacterSlotsWhenCsvCharCellsEmpty;
+    private bool chapterVideoPlaying;
+    private bool chapterVideoSkippable;
 
     private readonly Dictionary<string, string> _dialogueEventScratch = new Dictionary<string, string>(2);
     private readonly Dictionary<string, string> _headProfileEventScratch = new Dictionary<string, string>(2);
@@ -468,17 +475,7 @@ public class VNManager : BaseManager<VNManager>
                 VNDebug.LogVerbose($"[VNManager] 快进过程中遇到选项命令，停止在第 {i} 行 (ID: {line.ID})");
                 
                 // 先应用当前行的状态（背景、立绘、BGM等）
-                if (!string.IsNullOrEmpty(line.Background)) currentBG = line.Background;
-                if (!string.IsNullOrEmpty(line.BGM))
-                {
-                    if (line.BGM == "stop") currentBGM = "";
-                    else if (line.BGM != "pause" && line.BGM != "resume") currentBGM = line.BGM;
-                }
-                SimulateCharacterUpdate("Left", line.CharLeft);
-                SimulateCharacterUpdate("Mid", line.CharMid);
-                SimulateCharacterUpdate("Right", line.CharRight);
-                if (line.Voice == "false") isVoiceEnabled = false;
-                else if (!string.IsNullOrEmpty(line.Voice)) isVoiceEnabled = true;
+                ApplySimulatedLineState(line);
                 lastLine = line;
                 
                 // 先应用其他命令（不包括 choice）
@@ -492,24 +489,7 @@ public class VNManager : BaseManager<VNManager>
                 break;
             }
 
-            // 1. 基础属性
-            if (!string.IsNullOrEmpty(line.Background)) currentBG = line.Background;
-
-            // 2. BGM (只记录状态，不播放)
-            if (!string.IsNullOrEmpty(line.BGM))
-            {
-                if (line.BGM == "stop") currentBGM = "";
-                else if (line.BGM != "pause" && line.BGM != "resume") currentBGM = line.BGM;
-            }
-
-            // 3. 立绘
-            SimulateCharacterUpdate("Left", line.CharLeft);
-            SimulateCharacterUpdate("Mid", line.CharMid);
-            SimulateCharacterUpdate("Right", line.CharRight);
-
-            // 4. 语音
-            if (line.Voice == "false") isVoiceEnabled = false;
-            else if (!string.IsNullOrEmpty(line.Voice)) isVoiceEnabled = true;
+            ApplySimulatedLineState(line);
 
             // 5. Command 模拟 (特效、Flags 等)
             if (!string.IsNullOrEmpty(line.Command))
@@ -657,11 +637,123 @@ public class VNManager : BaseManager<VNManager>
 
     public void SetScriptData(List<StoryLine> lines, Dictionary<string, int> idMap, string scriptName)
     {
+        this.CurrentChapter = null;
+        this.CurrentSegmentId = "";
         this.StoryLines = lines;
         this.LineIDIndexMap = idMap;
         this.CurrentLineIndex = 0;
         this.lastLine = null;
         this.currentScriptName = scriptName;
+    }
+
+    public void SetChapterData(ChapterData chapter, string scriptName, string startContentId = "")
+    {
+        CurrentChapter = chapter;
+        currentScriptName = scriptName;
+        lastLine = null;
+        StoryLines = new List<StoryLine>();
+        LineIDIndexMap = new Dictionary<string, int>();
+        CurrentLineIndex = 0;
+        CurrentSegmentId = "";
+
+        if (chapter == null) return;
+
+        string segmentId = chapter.entrySegmentId;
+        int contentIndex = 0;
+        if (!string.IsNullOrEmpty(startContentId) && chapter.TryFindContent(startContentId, out SegmentData found, out int foundIndex))
+        {
+            segmentId = found.id;
+            contentIndex = foundIndex;
+        }
+
+        EnterSegment(segmentId, contentIndex);
+    }
+
+    public bool JumpToContentOrLine(string targetId)
+    {
+        if (string.IsNullOrEmpty(targetId)) return false;
+
+        if (CurrentChapter != null && CurrentChapter.TryFindContent(targetId, out SegmentData segment, out int contentIndex))
+        {
+            if (segment.id != CurrentSegmentId)
+                EnterSegment(segment.id, contentIndex);
+            else
+                CurrentLineIndex = contentIndex;
+            return true;
+        }
+
+        if (LineIDIndexMap != null && LineIDIndexMap.TryGetValue(targetId, out int index))
+        {
+            FastForwardToLine(index, ignoreChoice: true);
+            CurrentLineIndex = index;
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool HasPlayableContent()
+    {
+        if (StoryLines != null && StoryLines.Count > 0) return true;
+        if (CurrentChapter == null || CurrentChapter.segments == null) return false;
+        for (int i = 0; i < CurrentChapter.segments.Count; i++)
+        {
+            SegmentData segment = CurrentChapter.segments[i];
+            if (segment != null && segment.content != null && segment.content.Count > 0)
+                return true;
+        }
+        return false;
+    }
+
+    private void EnterSegment(string segmentId, int contentIndex = 0)
+    {
+        CurrentSegmentId = segmentId ?? "";
+        StoryLines = new List<StoryLine>();
+        LineIDIndexMap = new Dictionary<string, int>();
+
+        SegmentData segment = CurrentChapter != null ? CurrentChapter.FindSegment(segmentId) : null;
+        if (segment != null && segment.content != null)
+        {
+            for (int i = 0; i < segment.content.Count; i++)
+            {
+                DialogueContent content = segment.content[i];
+                if (content == null) continue;
+                StoryLine line = content.ToStoryLine();
+                if (!string.IsNullOrEmpty(line.ID))
+                    LineIDIndexMap[line.ID] = StoryLines.Count;
+                StoryLines.Add(line);
+            }
+        }
+
+        if (StoryLines.Count == 0)
+        {
+            CurrentLineIndex = 0;
+            Debug.LogWarning("[VNManager] Segment 没有可播放的 Dialogue Content: " + segmentId);
+            return;
+        }
+
+        CurrentLineIndex = Mathf.Clamp(contentIndex, 0, StoryLines.Count - 1);
+    }
+
+    private bool TryGoToNextSegment()
+    {
+        if (CurrentChapter == null) return false;
+        SegmentData segment = CurrentChapter.FindSegment(CurrentSegmentId);
+        if (segment == null || string.IsNullOrEmpty(segment.nextSegmentId)) return false;
+        if (CurrentChapter.FindSegment(segment.nextSegmentId) == null)
+        {
+            Debug.LogError("[VNManager] nextSegmentId 不存在: " + segment.nextSegmentId);
+            return false;
+        }
+        EnterSegment(segment.nextSegmentId, 0);
+        return StoryLines.Count > 0;
+    }
+
+    private bool MoveToNextContent()
+    {
+        CurrentLineIndex++;
+        if (CurrentLineIndex < StoryLines.Count) return true;
+        return TryGoToNextSegment();
     }
 
     public string GetCurrentScriptName()
@@ -863,6 +955,15 @@ public class VNManager : BaseManager<VNManager>
             gameplayPanel.RestoreDefaultTextProperties();
         }
 
+        DialogueContent currentContent = GetCurrentDialogueContent();
+        if (currentContent != null && currentContent.IsVideo())
+        {
+            lastLine = StoryLines[CurrentLineIndex];
+            PlayChapterVideo(currentContent);
+            _usePersistedCharacterSlotsWhenCsvCharCellsEmpty = false;
+            return;
+        }
+
         StoryLine currentLine = StoryLines[CurrentLineIndex];
         ApplyInheritance(currentLine);
         lastLine = currentLine;
@@ -881,6 +982,12 @@ public class VNManager : BaseManager<VNManager>
         // {
         //     CheckAndTriggerAutoPlay();
         // }
+        if (TryPresentChapterOptions())
+        {
+            _usePersistedCharacterSlotsWhenCsvCharCellsEmpty = false;
+            return;
+        }
+
         if (!string.IsNullOrEmpty(currentLine.Command))
         {
             ClearAdvanceAfterCommandsRequest();
@@ -951,6 +1058,15 @@ public class VNManager : BaseManager<VNManager>
     private void AdvanceToNextLine(bool skipAnimations)
     {
         VNDebug.LogVerbose($"[VNManager] Max line" + StoryLines.Count);
+        if (chapterVideoPlaying)
+        {
+            if (!chapterVideoSkippable)
+            {
+                VNDebug.LogVerbose("[VNManager] 当前视频不可跳过");
+                return;
+            }
+            StopChapterVideo();
+        }
         // 【修复】检查游戏状态，如果是 Choice 状态，不应该继续前进
         GameStateManager stateManager = GameStateManager.GetInstance();
         if (stateManager != null && stateManager.CurrentState == GameState.Choice)
@@ -1001,7 +1117,11 @@ public class VNManager : BaseManager<VNManager>
             return;
         }
 
-        CurrentLineIndex++;
+        if (!MoveToNextContent())
+        {
+            if (isReplayMode) EndReplay();
+            return;
+        }
 
         if (skipAnimations)
         {
@@ -1037,6 +1157,14 @@ public class VNManager : BaseManager<VNManager>
             gameplayPanel.RestoreDefaultTextProperties();
         }
 
+        DialogueContent immediateContent = GetCurrentDialogueContent();
+        if (immediateContent != null && immediateContent.IsVideo())
+        {
+            lastLine = StoryLines[CurrentLineIndex];
+            PlayChapterVideo(immediateContent);
+            return;
+        }
+
         StoryLine currentLine = StoryLines[CurrentLineIndex];
         ApplyInheritance(currentLine);
         lastLine = currentLine;
@@ -1049,6 +1177,9 @@ public class VNManager : BaseManager<VNManager>
         GlobalDataManager.GetInstance().AddReadLineID(currentLine.ID);
 
         int preIndex = CurrentLineIndex;
+        if (TryPresentChapterOptions())
+            return;
+
         if (!string.IsNullOrEmpty(currentLine.Command))
         {
             CommandManager.GetInstance().SimulateCommands(currentLine.Command);
@@ -1066,6 +1197,10 @@ public class VNManager : BaseManager<VNManager>
 
     private void ApplyInheritance(StoryLine currentLine)
     {
+        // 新版 Dialogue 每行都是完整状态：空值就是没有，不沿用上一行，也不自动补语音。
+        if (currentLine.CompleteState)
+            return;
+
         // Speaker / Text / HeadProfile / 立绘三槽：不继承，以本行 CSV 为准（立绘空槽在 UpdateCharacter 中视为隐藏）。
 
         // 背景、BGM 相关：仍继承 Manager 当前状态（空单元格沿用上一有效背景）。
@@ -1194,8 +1329,65 @@ public class VNManager : BaseManager<VNManager>
         }
     }
 
+    private void ApplySimulatedLineState(StoryLine line)
+    {
+        if (line.CompleteState)
+        {
+            if (!string.IsNullOrEmpty(line.Background))
+                currentBG = line.Background;
+            currentBGM = string.IsNullOrEmpty(line.BGM) ? "" : line.BGM;
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(line.Background)) currentBG = line.Background;
+            if (!string.IsNullOrEmpty(line.BGM))
+            {
+                if (line.BGM == "stop") currentBGM = "";
+                else if (line.BGM != "pause" && line.BGM != "resume") currentBGM = line.BGM;
+            }
+            if (line.Voice == "false") isVoiceEnabled = false;
+            else if (!string.IsNullOrEmpty(line.Voice)) isVoiceEnabled = true;
+        }
+
+        SimulateCharacterUpdate("Left", line.CharLeft);
+        SimulateCharacterUpdate("Mid", line.CharMid);
+        SimulateCharacterUpdate("Right", line.CharRight);
+    }
+
     private void UpdateAudioState(StoryLine currentLine)
     {
+        if (currentLine.CompleteState)
+        {
+            if (string.IsNullOrEmpty(currentLine.BGM))
+            {
+                if (!string.IsNullOrEmpty(currentBGM))
+                {
+                    MusicManager.GetInstance().StopBGM();
+                    currentBGM = "";
+                }
+            }
+            else if (currentLine.BGM != currentBGM)
+            {
+                MusicManager.GetInstance().PlayBGM(currentLine.BGM);
+                currentBGM = currentLine.BGM;
+            }
+
+            if (!string.IsNullOrEmpty(currentLine.Voice))
+            {
+                if (VoiceManager.GetInstance() != null)
+                {
+                    string voicePath = currentLine.Voice.Trim();
+                    if (!string.IsNullOrEmpty(voicePath) && !voicePath.Contains("://"))
+                        VoiceManager.GetInstance().PlayVoice(voicePath);
+                }
+            }
+            else if (VoiceManager.GetInstance() != null)
+            {
+                VoiceManager.GetInstance().StopVoice();
+            }
+            return;
+        }
+
         if (!string.IsNullOrEmpty(currentLine.BGM))
         {
             if (currentLine.BGM == "stop") { MusicManager.GetInstance().StopBGM(); currentBGM = ""; }
@@ -1349,10 +1541,194 @@ public class VNManager : BaseManager<VNManager>
 
     public void ExecuteChoiceCommand(string command)
     {
+        if (TryExecuteBranchChoice(command))
+            return;
+
         if (!string.IsNullOrEmpty(command))
             MonoManager.GetInstance().StartCoroutine(ExecuteActionsAndContinue(command));
         else
             PlayCurrentLine();
+    }
+
+    private DialogueContent GetCurrentDialogueContent()
+    {
+        if (CurrentChapter == null) return null;
+        SegmentData segment = CurrentChapter.FindSegment(CurrentSegmentId);
+        if (segment == null || segment.content == null) return null;
+        if (CurrentLineIndex < 0 || CurrentLineIndex >= segment.content.Count) return null;
+        return segment.content[CurrentLineIndex];
+    }
+
+    private bool TryPresentChapterOptions()
+    {
+        DialogueContent dialogue = GetCurrentDialogueContent();
+        if (dialogue == null || !dialogue.HasOptions()) return false;
+
+        var choices = new List<ChoiceData>();
+        for (int i = 0; i < dialogue.options.Count; i++)
+        {
+            DialogueOptionData option = dialogue.options[i];
+            if (option == null || string.IsNullOrEmpty(option.text)) continue;
+            choices.Add(new ChoiceData
+            {
+                Text = option.text,
+                Command = "branch(" + (option.result ?? "") + ")"
+            });
+        }
+        if (choices.Count == 0) return false;
+
+        GameStateManager.GetInstance().SetState(GameState.Choice);
+        PresentChoicePanel(choices);
+        return true;
+    }
+
+    private void PresentChoicePanel(List<ChoiceData> choices)
+    {
+        ChoicePanel panel = UIManager.GetInstance().GetPanel<ChoicePanel>("ChoicePanel");
+        if (panel != null && panel.gameObject.activeSelf)
+        {
+            panel.ShowChoices(choices);
+            return;
+        }
+
+        string path = VNProjectConfig.Instance != null ? VNProjectConfig.Instance.UI_ChoicePath : "VNovelizerRes/VNPrefabs/UI/Choice";
+        UIManager.GetInstance().ShowPanel<ChoicePanel>("ChoicePanel", path, E_UI_Layer.Top, p =>
+        {
+            if (p != null) p.ShowChoices(choices);
+        });
+    }
+
+    private bool TryExecuteBranchChoice(string command)
+    {
+        string result;
+        if (!TryParseBranchCommand(command, out result)) return false;
+        SelectBranch(result);
+        return true;
+    }
+
+    private static bool TryParseBranchCommand(string command, out string result)
+    {
+        result = "";
+        if (string.IsNullOrEmpty(command)) return false;
+        string trimmed = command.Trim();
+        if (!trimmed.StartsWith("branch(", StringComparison.OrdinalIgnoreCase) || !trimmed.EndsWith(")"))
+            return false;
+        result = trimmed.Substring("branch(".Length, trimmed.Length - "branch(".Length - 1).Trim();
+        return true;
+    }
+
+    private void PlayChapterVideo(DialogueContent content)
+    {
+        StopChapterVideo();
+
+        if (_autoPlayCoroutine != null)
+        {
+            MonoManager.GetInstance().StopCoroutine(_autoPlayCoroutine);
+            _autoPlayCoroutine = null;
+        }
+
+        bool hasOptions = content.HasOptions();
+        bool loop = content.IsLoop();
+        bool holdLastFrame = hasOptions && !loop;
+        chapterVideoSkippable = content.skippable;
+        chapterVideoPlaying = true;
+
+        if (hasOptions)
+            TryPresentChapterOptions();
+
+        GameObject videoGo = VNAPI.PlayVideo(content.videoAssetId, () =>
+        {
+            if (loop || holdLastFrame)
+                return;
+
+            chapterVideoPlaying = false;
+            NextLine();
+        }, loop, holdLastFrame);
+
+        if (chapterVideoSkippable && videoGo != null)
+            AttachVideoSkipButton(videoGo);
+    }
+
+    public void SkipChapterVideo()
+    {
+        if (!chapterVideoPlaying || !chapterVideoSkippable) return;
+
+        DialogueContent content = GetCurrentDialogueContent();
+        if (content != null && content.HasOptions())
+            return;
+
+        StopChapterVideo();
+        NextLine();
+    }
+
+    private void AttachVideoSkipButton(GameObject videoGo)
+    {
+        string path = VNProjectConfig.Instance != null && !string.IsNullOrEmpty(VNProjectConfig.Instance.UI_VideoSkipPath)
+            ? VNProjectConfig.Instance.UI_VideoSkipPath
+            : "VNovelizerRes/VNPrefabs/UI/Video/VideoSkipBtn";
+        GameObject prefab = ResourcesManager.GetInstance().Load<GameObject>(path);
+        GameObject btnGo = prefab != null
+            ? UnityEngine.Object.Instantiate(prefab, videoGo.transform)
+            : CreateFallbackSkipButton(videoGo.transform);
+
+        Button button = btnGo.GetComponent<Button>();
+        if (button == null) button = btnGo.GetComponentInChildren<Button>(true);
+        if (button == null) button = btnGo.AddComponent<Button>();
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(SkipChapterVideo);
+    }
+
+    private static GameObject CreateFallbackSkipButton(Transform parent)
+    {
+        GameObject go = new GameObject("VideoSkipBtn", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        go.transform.SetParent(parent, false);
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(-24f, -24f);
+        rt.sizeDelta = new Vector2(140f, 48f);
+        go.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.45f);
+
+        GameObject textGo = new GameObject("Text", typeof(RectTransform));
+        textGo.transform.SetParent(go.transform, false);
+        RectTransform textRt = textGo.GetComponent<RectTransform>();
+        textRt.anchorMin = Vector2.zero;
+        textRt.anchorMax = Vector2.one;
+        textRt.offsetMin = Vector2.zero;
+        textRt.offsetMax = Vector2.zero;
+        TextMeshProUGUI tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = "跳过";
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontSize = 24;
+        tmp.color = Color.white;
+        tmp.raycastTarget = false;
+        return go;
+    }
+
+    private void StopChapterVideo()
+    {
+        chapterVideoPlaying = false;
+        VNAPI.StopVideo();
+    }
+
+    public void SelectBranch(string result)
+    {
+        StopChapterVideo();
+        if (CurrentChapter == null)
+        {
+            Debug.LogError("[VNManager] 当前不是 Chapter 剧本，无法按选项跳转");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(result) || CurrentChapter.FindSegment(result) == null)
+        {
+            Debug.LogError("[VNManager] 选项 result 不是有效的 Segment ID: " + result);
+            return;
+        }
+
+        EnterSegment(result, 0);
+        PlayCurrentLine();
     }
 
     public bool IsAutoPlaying() { return isAutoPlaying; }
@@ -1480,7 +1856,7 @@ public class VNManager : BaseManager<VNManager>
         }
         
         // 3. 显示 UI (异步过程，UIManager会自动注册并跟踪进度)
-        if (StoryLines.Count > 0)
+        if (HasPlayableContent())
         {
             // UIManager会自动注册任务 "ui_VNGameplayPanel"，我们只需要等待它完成
             UIManager.GetInstance().ShowPanel<VNGameplayPanel>("VNGameplayPanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
@@ -1702,7 +2078,10 @@ public class VNManager : BaseManager<VNManager>
         var scriptData = ScriptParser.Parse(saveData.ScriptFileName);
         if (scriptData != null)
         {
-            SetScriptData(scriptData.Lines, scriptData.IDMap, saveData.ScriptFileName);
+            if (scriptData.IsChapter)
+                SetChapterData(scriptData.Chapter, saveData.ScriptFileName, saveData.LineID);
+            else
+                SetScriptData(scriptData.Lines, scriptData.IDMap, saveData.ScriptFileName);
             progressManager.UpdateTaskProgress(scriptTaskID, 0.7f);
             yield return null; // 等待一帧，让UI更新
         }
@@ -1776,7 +2155,7 @@ public class VNManager : BaseManager<VNManager>
         currentLoadingTargetIndex = targetIndex;
 
         // 2. 显示 UI (异步过程，UIManager会自动注册并跟踪进度)
-        if (StoryLines.Count > 0)
+        if (HasPlayableContent())
         {
             UIManager.GetInstance().ShowPanel<VNGameplayPanel>("VNGameplayPanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
             {
@@ -1880,8 +2259,8 @@ public class VNManager : BaseManager<VNManager>
         // 如果某个命令登记了“命令全部执行完后自动前进”
         if (shouldAdvanceAfterCommands)
         {
-            CurrentLineIndex++;
-            PlayCurrentLine();
+            if (MoveToNextContent())
+                PlayCurrentLine();
             yield break;
         }
 
@@ -1925,10 +2304,10 @@ public class VNManager : BaseManager<VNManager>
         // 第二步：等待AutoSpeed时间后进入下一行
         yield return new WaitForSeconds(delay);
         
-        VNDebug.LogVerbose($"[VNManager] 自动播放进入下一行 (行索引: {CurrentLineIndex + 1})");
+        VNDebug.LogVerbose($"[VNManager] 自动播放进入下一 Content");
         _autoPlayCoroutine = null;
-        CurrentLineIndex++;
-        PlayCurrentLine();
+        if (MoveToNextContent())
+            PlayCurrentLine();
     }
     
     private IEnumerator WaitLoadingQueueThenStartGameplay()

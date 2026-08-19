@@ -277,6 +277,18 @@ namespace VNovelizer.Core.API
         {
             return GlobalDataManager.GetInstance().GetStringFlag(flagName);
         }
+
+        /// <summary>解锁路线图节点。</summary>
+        public static void UnlockRoute(string nodeId)
+        {
+            GlobalDataManager.GetInstance().UnlockRoute(nodeId);
+        }
+
+        /// <summary>路线图节点是否已解锁。</summary>
+        public static bool IsRouteUnlocked(string nodeId)
+        {
+            return GlobalDataManager.GetInstance().IsRouteUnlocked(nodeId);
+        }
         
         #endregion
 
@@ -302,21 +314,27 @@ namespace VNovelizer.Core.API
 
         public static void PlayVideo(string videoName, System.Action onComplete)
         {
+            PlayVideo(videoName, onComplete, false, false);
+        }
+
+        public static GameObject PlayVideo(string videoName, System.Action onFirstEnd, bool loop, bool holdLastFrame)
+        {
+            StopVideo();
+
             Transform parent = UIManager.GetInstance().GetLayerFather(E_UI_Layer.System);
             if (parent == null)
             {
                 VNDebug.LogVerbose("[VNAPI] 找不到系统层父物体");
-                onComplete?.Invoke();
-                return;
+                onFirstEnd?.Invoke();
+                return null;
             }
 
-            // 2. 加载预制体
             var config = VNProjectConfig.Instance;
             if (config == null || string.IsNullOrEmpty(config.VideoObjPath))
             {
                 VNDebug.LogVerboseWarning("[VNAPI] VNProjectConfig 无效或未配置 VideoObjPath");
-                onComplete?.Invoke();
-                return;
+                onFirstEnd?.Invoke();
+                return null;
             }
 
             string path = config.VideoObjPath;
@@ -325,22 +343,36 @@ namespace VNovelizer.Core.API
             if (prefab == null)
             {
                 Debug.LogError($"[VNAPI] 找不到视频播放器预制体: {path}");
-                onComplete?.Invoke();
-                return;
+                onFirstEnd?.Invoke();
+                return null;
             }
 
-            // 3. 实例化并播放
             GameObject go = UnityEngine.Object.Instantiate(prefab, parent);
+            go.name = "VideoObj";
 
-            // 确保全屏铺满
             RectTransform rect = go.GetComponent<RectTransform>();
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
             rect.localScale = Vector3.one;
 
-            // 启动
             var player = go.GetComponent<VideoModel>();
-            player.Play(videoName, onComplete);
+            player.Play(videoName, onFirstEnd, loop, holdLastFrame);
+            return go;
+        }
+
+        public static void StopVideo()
+        {
+            Transform parent = UIManager.GetInstance().GetLayerFather(E_UI_Layer.System);
+            if (parent == null) return;
+
+            for (int i = parent.childCount - 1; i >= 0; i--)
+            {
+                Transform child = parent.GetChild(i);
+                if (child == null) continue;
+                VideoModel video = child.GetComponent<VideoModel>();
+                if (video != null)
+                    video.Close();
+            }
         }
         public static void ShowPrompt(string text, float duration)
         {

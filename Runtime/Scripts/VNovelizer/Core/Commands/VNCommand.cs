@@ -68,6 +68,7 @@ namespace VNovelizer.Core.Commands
             RegisterCommand(new UnlockCGCommand());
             RegisterCommand(new UnlockMusicCommand());
             RegisterCommand(new UnlockSceneCommand());
+            RegisterCommand(new UnlockRouteCommand());
             RegisterCommand(new ConfigCommand());
             RegisterCommand(new ShakeCommand());
             RegisterCommand(new WaitCommand());

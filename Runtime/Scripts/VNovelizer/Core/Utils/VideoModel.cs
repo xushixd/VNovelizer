@@ -13,6 +13,10 @@ public class VideoModel : MonoBehaviour
     private VideoPlayer videoPlayer;
     private RawImage rawImage;
     private Action onComplete;
+    private Action onFirstEnd;
+    private bool loopAfterEnd;
+    private bool holdLastFrame;
+    private bool firstPlayEnded;
 
     // Unity VideoPlayer 支持的视频格式
     private static readonly string[] SupportedExtensions = { ".mp4", ".mov", ".webm", ".avi", ".asf", ".wmv" };
@@ -25,17 +29,25 @@ public class VideoModel : MonoBehaviour
         // 设置VideoPlayer使用URL作为源
         videoPlayer.source = VideoSource.Url;
 
-        // 绑定事件：播放结束
-        videoPlayer.loopPointReached += (vp) => Close();
+        videoPlayer.loopPointReached += OnLoopPointReached;
         videoPlayer.errorReceived += (vp, msg) => {
             Debug.LogError($"[Video] Error: {msg}");
-            Close();
+            NotifyEndedThenClose();
         };
     }
 
     public void Play(string videoName, Action callback)
     {
-        this.onComplete = callback;
+        Play(videoName, callback, false, false);
+    }
+
+    public void Play(string videoName, Action onEnded, bool loopAfterFirstPlay, bool keepLastFrame)
+    {
+        onFirstEnd = onEnded;
+        onComplete = loopAfterFirstPlay || keepLastFrame ? null : onEnded;
+        loopAfterEnd = loopAfterFirstPlay;
+        holdLastFrame = keepLastFrame;
+        firstPlayEnded = false;
 
         // 1. 获取配置里的子路径 (比如 "VNovelizerRes/Videos")
         string subPath = VNProjectConfig.Instance.VideoResPath;
@@ -150,12 +162,45 @@ public class VideoModel : MonoBehaviour
 
         // 绑定材质并播放
         rawImage.texture = videoPlayer.texture;
+        videoPlayer.isLooping = loopAfterEnd;
         videoPlayer.Play();
     }
 
-    private void Close()
+    private void OnLoopPointReached(VideoPlayer vp)
     {
-        onComplete?.Invoke();
-        Destroy(gameObject); // 播放完直接自毁
+        if (loopAfterEnd)
+            return;
+
+        if (firstPlayEnded)
+            return;
+
+        firstPlayEnded = true;
+
+        if (holdLastFrame)
+        {
+            videoPlayer.Pause();
+            onFirstEnd?.Invoke();
+            return;
+        }
+
+        NotifyEndedThenClose();
+    }
+
+    private void NotifyEndedThenClose()
+    {
+        Action ended = onFirstEnd ?? onComplete;
+        onFirstEnd = null;
+        onComplete = null;
+        if (this != null && gameObject != null)
+            Destroy(gameObject);
+        ended?.Invoke();
+    }
+
+    public void Close()
+    {
+        onFirstEnd = null;
+        onComplete = null;
+        if (this != null && gameObject != null)
+            Destroy(gameObject);
     }
 }

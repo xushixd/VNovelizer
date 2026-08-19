@@ -12,7 +12,7 @@ public class UIEditorWindow : EditorWindow
 
     public enum UIType
     {
-        Gameplay, Pause, History, SaveLoad, Settings, Choice, Confirm, MainMenu, Loading
+        Gameplay, Pause, History, SaveLoad, Settings, Choice, Confirm, MainMenu, Loading, RouteMap
     }
 
     private UIType currentType = UIType.Gameplay;
@@ -163,6 +163,7 @@ public class UIEditorWindow : EditorWindow
             case UIType.Confirm: return "确认弹窗 (Confirm)";
             case UIType.MainMenu: return "主界面 (MainMenu)";
             case UIType.Loading: return "加载进度 (Loading)";
+            case UIType.RouteMap: return "路线图 (RouteMap)";
             default: return type.ToString();
         }
     }
@@ -183,6 +184,7 @@ public class UIEditorWindow : EditorWindow
             case UIType.Confirm: return config.UI_ConfirmPath;
             case UIType.MainMenu: return config.UI_MainMenuPath;
             case UIType.Loading: return config.UI_LoadingPath;
+            case UIType.RouteMap: return config.UI_RouteMapPath;
             default: return "";
         }
     }
@@ -200,6 +202,7 @@ public class UIEditorWindow : EditorWindow
             case UIType.Confirm: return "ConfirmPanel";
             case UIType.MainMenu: return "MainMenuPanel";
             case UIType.Loading: return "LoadingProgressPanel";
+            case UIType.RouteMap: return "RouteMapPanel";
             default: return "";
         }
     }

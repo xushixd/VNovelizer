@@ -23,12 +23,14 @@ namespace VNovelizer.Core.Commands
             // 1. 解析新剧本
             var scriptData = ScriptParser.Parse(scriptName);
 
-            if (scriptData != null && scriptData.Lines.Count > 0)
+            if (scriptData != null && (scriptData.IsChapter || scriptData.Lines.Count > 0))
             {
                 VNManager manager = VNManager.GetInstance();
 
-                // 2. 注入数据 (此时 CurrentLineIndex 会重置为 0)
-                manager.SetScriptData(scriptData.Lines, scriptData.IDMap, scriptName);
+                if (scriptData.IsChapter)
+                    manager.SetChapterData(scriptData.Chapter, scriptName, startID);
+                else
+                    manager.SetScriptData(scriptData.Lines, scriptData.IDMap, scriptName);
                 Debug.Log($"[LoadScript] 成功加载剧本: {scriptName}");
 
                 // 3. 处理跳转逻辑

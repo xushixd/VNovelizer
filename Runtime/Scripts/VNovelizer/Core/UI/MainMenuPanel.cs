@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,6 +20,7 @@ public class MainMenuPanel : BasePanel
     [SerializeField] private Button newGameBtn;
     [SerializeField] private Button loadGameBtn;
     [SerializeField] private Button galleryBtn;
+    [SerializeField] private Button routeMapBtn;
     [SerializeField] private Button settingsBtn;
     [SerializeField] private Button quitBtn;
     
@@ -28,6 +30,7 @@ public class MainMenuPanel : BasePanel
     
     protected override void Awake()
     {
+        EnsureRouteMapButton();
         base.Awake();
         
         UIManager.GetInstance().Init();
@@ -47,6 +50,7 @@ public class MainMenuPanel : BasePanel
         newGameBtn = GetControl<Button>("NewGameBtn");
         loadGameBtn = GetControl<Button>("LoadGameBtn");
         galleryBtn = GetControl<Button>("GalleryBtn");
+        routeMapBtn = GetControl<Button>("RouteMapBtn");
         settingsBtn = GetControl<Button>("SettingsBtn");
         quitBtn = GetControl<Button>("QuitBtn");
         
@@ -57,6 +61,8 @@ public class MainMenuPanel : BasePanel
             Debug.LogError("[MainMenuPanel] 找不到 LoadGameBtn 按钮！");
         if (galleryBtn == null)
             Debug.LogWarning("[MainMenuPanel] 找不到 GalleryBtn 按钮（可选）");
+        if (routeMapBtn == null)
+            Debug.LogWarning("[MainMenuPanel] 找不到 RouteMapBtn 按钮（可选）");
         if (settingsBtn == null)
             Debug.LogError("[MainMenuPanel] 找不到 SettingsBtn 按钮！");
         if (quitBtn == null)
@@ -74,6 +80,8 @@ public class MainMenuPanel : BasePanel
             loadGameBtn.onClick.AddListener(OnLoadGameBtnClick);
         if (galleryBtn != null)
             galleryBtn.onClick.AddListener(OnGalleryBtnClick);
+        if (routeMapBtn != null)
+            routeMapBtn.onClick.AddListener(OnRouteMapBtnClick);
         if (settingsBtn != null)
             settingsBtn.onClick.AddListener(OnSettingsBtnClick);
         if (quitBtn != null)
@@ -91,6 +99,8 @@ public class MainMenuPanel : BasePanel
             loadGameBtn.onClick.RemoveListener(OnLoadGameBtnClick);
         if (galleryBtn != null)
             galleryBtn.onClick.RemoveListener(OnGalleryBtnClick);
+        if (routeMapBtn != null)
+            routeMapBtn.onClick.RemoveListener(OnRouteMapBtnClick);
         if (settingsBtn != null)
             settingsBtn.onClick.RemoveListener(OnSettingsBtnClick);
         if (quitBtn != null)
@@ -251,6 +261,7 @@ public class MainMenuPanel : BasePanel
         if (newGameBtn != null) newGameBtn.interactable = interactable;
         if (loadGameBtn != null) loadGameBtn.interactable = interactable;
         if (galleryBtn != null) galleryBtn.interactable = interactable;
+        if (routeMapBtn != null) routeMapBtn.interactable = interactable;
         if (settingsBtn != null) settingsBtn.interactable = interactable;
         if (quitBtn != null) quitBtn.interactable = interactable;
     }
@@ -281,6 +292,14 @@ public class MainMenuPanel : BasePanel
         );
     }
     
+    /// <summary>
+    /// 路线图按钮点击
+    /// </summary>
+    private void OnRouteMapBtnClick()
+    {
+        RouteMapPanel.ShowFromMenu();
+    }
+
     /// <summary>
     /// 画廊按钮点击
     /// </summary>
@@ -348,6 +367,41 @@ public class MainMenuPanel : BasePanel
     }
     
     #endregion
+    
+    /// <summary>
+    /// 旧主菜单预制体没有路线图按钮时，复制画廊按钮放在它后面。
+    /// </summary>
+    private void EnsureRouteMapButton()
+    {
+        if (transform.Find("RouteMapBtn") != null) return;
+
+        Transform existing = FindDeepChild(transform, "RouteMapBtn");
+        if (existing != null) return;
+
+        Transform gallery = FindDeepChild(transform, "GalleryBtn");
+        if (gallery == null) return;
+
+        GameObject clone = Instantiate(gallery.gameObject, gallery.parent);
+        clone.name = "RouteMapBtn";
+        clone.transform.SetSiblingIndex(gallery.GetSiblingIndex() + 1);
+
+        TMP_Text label = clone.GetComponentInChildren<TMP_Text>(true);
+        if (label != null) label.text = "路线图";
+        Text legacy = clone.GetComponentInChildren<Text>(true);
+        if (legacy != null) legacy.text = "路线图";
+    }
+
+    private static Transform FindDeepChild(Transform root, string name)
+    {
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform child = root.GetChild(i);
+            if (child.name == name) return child;
+            Transform found = FindDeepChild(child, name);
+            if (found != null) return found;
+        }
+        return null;
+    }
     
     #region 辅助方法
     

@@ -28,6 +28,7 @@ public class GlobalData
     public List<string> UnlockedCGs = new List<string>();
     public List<string> UnlockedScenes = new List<string>();
     public List<string> UnlockedMusic = new List<string>();
+    public List<string> UnlockedRouteNodes = new List<string>();
     public List<string> ReadLineIDs = new List<string>();
     
     // 游戏标志（用于剧情分支等）
