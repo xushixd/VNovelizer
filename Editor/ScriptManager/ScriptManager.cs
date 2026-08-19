@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.IO;
@@ -127,7 +128,7 @@ public class ScriptManagerWindow : EditorWindow
             element.RegisterCallback<MouseDownEvent>(OnItemMouseDown);
             void OnItemMouseDown(MouseDownEvent evt)
             {
-                if (evt.clickCount == 2) Application.OpenURL(entry.File.FullName);
+                if (evt.clickCount == 2) OpenScriptFile(entry);
             }
         };
 
@@ -309,7 +310,7 @@ public class ScriptManagerWindow : EditorWindow
         AssetDatabase.Refresh();
         RefreshList();
         statusLabel.text = $"已创建：{Path.GetFileName(path)}";
-        Application.OpenURL(path);
+        OpenScriptFile(new ScriptFileEntry { File = new FileInfo(path), Format = ScriptFormat.Json });
     }
 
     private void CreateExcelScript()
@@ -338,7 +339,7 @@ public class ScriptManagerWindow : EditorWindow
             RefreshList();
             PrepareLocalization(Path.GetFileNameWithoutExtension(path));
             statusLabel.text = $"已创建：{Path.GetFileName(path)}";
-            Application.OpenURL(path);
+            OpenScriptFile(new ScriptFileEntry { File = new FileInfo(path), Format = ScriptFormat.Excel });
         }
         catch (System.Exception e)
         {
@@ -557,6 +558,24 @@ public class ScriptManagerWindow : EditorWindow
 
         conflictPath = candidate;
         return true;
+    }
+
+    private static void OpenScriptFile(ScriptFileEntry entry)
+    {
+        if (entry == null || entry.File == null || !entry.File.Exists)
+        {
+            EditorUtility.DisplayDialog("无法打开", "找不到剧本文件。", "确定");
+            return;
+        }
+
+        string path = entry.File.FullName;
+        if (entry.Format == ScriptFormat.Json || entry.Format == ScriptFormat.Csv)
+        {
+            InternalEditorUtility.OpenFileAtLineExternal(path, 1);
+            return;
+        }
+
+        Application.OpenURL(path);
     }
 
     private static bool ConfirmOverwrite(string path)

@@ -204,7 +204,7 @@ public static class ScriptParser
         }
         root["segments"] = segmentArray;
 
-        var writer = new JsonWriter { PrettyPrint = true };
+        var writer = CreatePrettyWriter();
         JsonMapper.ToJson(root, writer);
         return writer.ToString();
     }
@@ -280,9 +280,14 @@ public static class ScriptParser
         }
 
         root["lines"] = array;
-        var writer = new JsonWriter { PrettyPrint = true };
+        var writer = CreatePrettyWriter();
         JsonMapper.ToJson(root, writer);
         return writer.ToString();
+    }
+
+    public static JsonWriter CreatePrettyWriter()
+    {
+        return new JsonWriter { PrettyPrint = true, EscapeUnicode = false };
     }
 
     private static SegmentData ReadSegment(JsonData item)

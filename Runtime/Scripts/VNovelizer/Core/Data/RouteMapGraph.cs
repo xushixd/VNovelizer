@@ -202,7 +202,7 @@ public static class RouteMapGraph
         }
         root["edges"] = edges;
 
-        var writer = new JsonWriter { PrettyPrint = true };
+        var writer = ScriptParser.CreatePrettyWriter();
         JsonMapper.ToJson(root, writer);
         return writer.ToString();
     }

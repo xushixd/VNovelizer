@@ -51,6 +51,7 @@ namespace LitJson
         private bool                 pretty_print;
         private bool                 validate;
         private bool                 lower_case_properties;
+        private bool                 escape_unicode;
         private TextWriter           writer;
         #endregion
 
@@ -81,6 +82,11 @@ namespace LitJson
         public bool LowerCaseProperties {
             get { return lower_case_properties; }
             set { lower_case_properties = value; }
+        }
+
+        public bool EscapeUnicode {
+            get { return escape_unicode; }
+            set { escape_unicode = value; }
         }
         #endregion
 
@@ -173,6 +179,7 @@ namespace LitJson
             pretty_print = false;
             validate = true;
             lower_case_properties = false;
+            escape_unicode = true;
 
             ctx_stack = new Stack<WriterContext> ();
             context = new WriterContext ();
@@ -262,7 +269,7 @@ namespace LitJson
                     continue;
                 }
 
-                if ((int) str[i] >= 32 && (int) str[i] <= 126) {
+                if ((int) str[i] >= 32 && ((int) str[i] <= 126 || !escape_unicode)) {
                     writer.Write (str[i]);
                     continue;
                 }
