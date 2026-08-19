@@ -46,7 +46,7 @@ namespace VNovelizer.Core.Commands
                 float.TryParse(parts[2].Trim(), out intensity);
 
             // 使用泛型方法获取 VNGameplayPanel
-            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             if (panel == null)
             {
                 Debug.LogError("[ShakeCommand] 未找到 VNGameplayPanel，请确保该面板已打开。");

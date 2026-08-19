@@ -89,10 +89,10 @@ public class VNProjectConfig : ScriptableObject
     public string AnimationPath = "VNovelizerRes/VFX/Animation";
 
     [Header("=== UI预制件加载路径 (UI Prefabs) ===")]
-    [Tooltip("VNGamePanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/VNGamePlay)")]
-    public string UI_VNGamePlayPath = "VNovelizerRes/VNPrefabs/UI/VNGamePlay";
+    [Tooltip("对话面板在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Content)")]
+    public string UI_VNGamePlayPath = "VNovelizerRes/VNPrefabs/UI/Content";
 
-    [Tooltip("HistoryPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/VNGamePlay)")]
+    [Tooltip("HistoryPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/History)")]
     public string UI_HistoryPath = "VNovelizerRes/VNPrefabs/UI/History";
 
     [Tooltip("SettingsPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Settings)")]
@@ -104,11 +104,11 @@ public class VNProjectConfig : ScriptableObject
     [Tooltip("Confirm在Resources下的相对路径 (例如: VNPrefabs/UI/Confirm)")]
     public string UI_ConfirmPath = "VNovelizerRes/VNPrefabs/UI/Confirm";
 
-    [Tooltip("Confirm在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/VNGameplay/Prompt)")]
-    public string UI_PromptPath = "VNovelizerRes/VNPrefabs/UI/VNGameplay/Prompt";
+    [Tooltip("提示条在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Content/Prompt)")]
+    public string UI_PromptPath = "VNovelizerRes/VNPrefabs/UI/Content/Prompt";
 
-    [Tooltip("Choice在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Choice)")]
-    public string UI_ChoicePath = "VNovelizerRes/VNPrefabs/UI/Choice";
+    [Tooltip("选项面板在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Content)")]
+    public string UI_ChoicePath = "VNovelizerRes/VNPrefabs/UI/Content";
 
     [Tooltip("MainMenuPanel在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/MainMenu)")]
     public string UI_MainMenuPath = "VNovelizerRes/VNPrefabs/UI/MainMenu";
@@ -155,10 +155,10 @@ public class VNProjectConfig : ScriptableObject
     [Header("=== 音效/视频Obj加载路径 ===")]
     [Tooltip("SoundObj在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/Gameplay/SoundObj")]
     public string SoundObjPath = "VNovelizerRes/VNPrefabs/Gameplay/SoundObj";
-    [Tooltip("VideoObj在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/Gameplay/VideoObj")]
-    public string VideoObjPath = "VNovelizerRes/VNPrefabs/Gameplay/VideoObj";
+    [Tooltip("视频面板在Resources下的相对路径 (例如: VNovelizerRes/VNPrefabs/UI/Content/VideoPanel)")]
+    public string VideoObjPath = "VNovelizerRes/VNPrefabs/UI/Content/VideoPanel";
     [Tooltip("视频跳过按钮在Resources下的相对路径")]
-    public string UI_VideoSkipPath = "VNovelizerRes/VNPrefabs/UI/Video/VideoSkipBtn";
+    public string UI_VideoSkipPath = "VNovelizerRes/VNPrefabs/UI/Content/VideoPanel";
 
     [Header("=== 游戏启动设置 ===")]
     [Tooltip("主界面点击新游戏时加载的默认剧本名称 (不含扩展名，例如: Test101)")]

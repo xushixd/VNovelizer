@@ -62,7 +62,7 @@ namespace VNovelizer.Core.Commands
 
             // 3. 获取面板并保存默认值（如果还没有保存过）
             // 注意：必须在移动前保存，此时位置还是原始位置
-            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             if (panel != null)
             {
                 panel.SaveDefaultCharTransform(posCode);

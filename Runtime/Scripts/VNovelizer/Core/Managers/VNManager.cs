@@ -181,14 +181,15 @@ public class VNManager : BaseManager<VNManager>
     /// </summary>
     private void StartGameLoading()
     {
-        
         isGameplayPanelLoadCallbackFired = false;
-        
+
         LoadingProgressManager progressManager = LoadingProgressManager.GetInstance();
+        progressManager.OnAllTasksCompleted -= OnGameLoadingCompleted;
+        progressManager.ClearAllTasks();
         
         // 注册加载任务
         string scriptTaskID = "load_script";
-        string uiTaskID = "ui_VNGameplayPanel"; // 使用UIManager自动注册的任务ID
+        string uiTaskID = "ui_DialoguePanel"; // 使用UIManager自动注册的任务ID
         
         progressManager.RegisterTask(scriptTaskID, $"加载剧本: {pendingScriptName}", 0.4f); // 权重40%
         // 先注册UI任务（如果还没注册），设置正确的权重
@@ -283,7 +284,7 @@ public class VNManager : BaseManager<VNManager>
         // 3. 显示 UI (异步过程)
         if (StoryLines.Count > 0)
         {
-            UIManager.GetInstance().ShowPanel<VNGameplayPanel>("VNGameplayPanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
+            UIManager.GetInstance().ShowPanel<VNGameplayPanel>("DialoguePanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
             {
                 // 【修复】确保游戏状态设置为 Gameplay（场景回放时需要）
                 GameStateManager.GetInstance().SetState(GameState.Gameplay);
@@ -744,10 +745,7 @@ public class VNManager : BaseManager<VNManager>
         SegmentData segment = CurrentChapter.FindSegment(CurrentSegmentId);
         if (segment == null || string.IsNullOrEmpty(segment.nextSegmentId)) return false;
         if (CurrentChapter.FindSegment(segment.nextSegmentId) == null)
-        {
-            Debug.LogError("[VNManager] nextSegmentId 不存在: " + segment.nextSegmentId);
             return false;
-        }
         EnterSegment(segment.nextSegmentId, 0);
         return StoryLines.Count > 0;
     }
@@ -815,12 +813,13 @@ public class VNManager : BaseManager<VNManager>
     private void ContinueGameLoading(SaveData saveData)
     {
         isGameplayPanelLoadCallbackFired = false;
-        
+
         LoadingProgressManager progressManager = LoadingProgressManager.GetInstance();
+        progressManager.ClearAllTasks();
         
         // 注册加载任务
         string scriptTaskID = "load_script_continue";
-        string uiTaskID = "ui_VNGameplayPanel"; // 使用UIManager自动注册的任务ID
+        string uiTaskID = "ui_DialoguePanel"; // 使用UIManager自动注册的任务ID
         
         progressManager.RegisterTask(scriptTaskID, $"加载存档: {saveData.ScriptFileName}", 0.4f); // 权重40%
         // 先注册UI任务（如果还没注册），设置正确的权重
@@ -951,7 +950,7 @@ public class VNManager : BaseManager<VNManager>
         }
 
 
-        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         if (gameplayPanel != null)
         {
             gameplayPanel.RestoreDefaultCharTransforms();
@@ -1017,7 +1016,7 @@ public class VNManager : BaseManager<VNManager>
         
         // 检查打字机效果是否完成
         bool isTextTyping = false;
-        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         if (gameplayPanel != null)
         {
             isTextTyping = gameplayPanel.IsTextTyping();
@@ -1062,14 +1061,7 @@ public class VNManager : BaseManager<VNManager>
     {
         VNDebug.LogVerbose($"[VNManager] Max line" + StoryLines.Count);
         if (chapterVideoPlaying)
-        {
-            if (!chapterVideoSkippable)
-            {
-                VNDebug.LogVerbose("[VNManager] 当前视频不可跳过");
-                return;
-            }
-            StopChapterVideo();
-        }
+            return;
         // 【修复】检查游戏状态，如果是 Choice 状态，不应该继续前进
         GameStateManager stateManager = GameStateManager.GetInstance();
         if (stateManager != null && stateManager.CurrentState == GameState.Choice)
@@ -1153,7 +1145,7 @@ public class VNManager : BaseManager<VNManager>
             _autoPlayCoroutine = null;
         }
 
-        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         if (gameplayPanel != null)
         {
             gameplayPanel.RestoreDefaultCharTransforms();
@@ -1590,14 +1582,19 @@ public class VNManager : BaseManager<VNManager>
         ChoicePanel panel = UIManager.GetInstance().GetPanel<ChoicePanel>("ChoicePanel");
         if (panel != null && panel.gameObject.activeSelf)
         {
+            panel.transform.SetAsLastSibling();
             panel.ShowChoices(choices);
             return;
         }
 
-        string path = VNProjectConfig.Instance != null ? VNProjectConfig.Instance.UI_ChoicePath : "VNovelizerRes/VNPrefabs/UI/Choice";
-        UIManager.GetInstance().ShowPanel<ChoicePanel>("ChoicePanel", path, E_UI_Layer.Top, p =>
+        string path = VNProjectConfig.Instance != null ? VNProjectConfig.Instance.UI_ChoicePath : "VNovelizerRes/VNPrefabs/UI/Content";
+        UIManager.GetInstance().ShowPanel<ChoicePanel>("ChoicePanel", path, E_UI_Layer.System, p =>
         {
-            if (p != null) p.ShowChoices(choices);
+            if (p != null)
+            {
+                p.transform.SetAsLastSibling();
+                p.ShowChoices(choices);
+            }
         });
     }
 
@@ -1623,6 +1620,7 @@ public class VNManager : BaseManager<VNManager>
     private void PlayChapterVideo(DialogueContent content)
     {
         StopChapterVideo();
+        StopStoryAudio();
 
         if (_autoPlayCoroutine != null)
         {
@@ -1631,25 +1629,58 @@ public class VNManager : BaseManager<VNManager>
         }
 
         bool hasOptions = content.HasOptions();
-        bool loop = content.IsLoop();
-        bool holdLastFrame = hasOptions && !loop;
+        bool loop = content.IsLoop() && !hasOptions;
+        bool holdLastFrame = hasOptions;
         chapterVideoSkippable = content.skippable;
         chapterVideoPlaying = true;
 
-        if (hasOptions)
-            TryPresentChapterOptions();
-
         GameObject videoGo = VNAPI.PlayVideo(content.videoAssetId, () =>
         {
-            if (loop || holdLastFrame)
-                return;
-
-            chapterVideoPlaying = false;
-            NextLine();
+            FinishChapterVideo(content);
         }, loop, holdLastFrame);
 
-        if (chapterVideoSkippable && videoGo != null)
-            AttachVideoSkipButton(videoGo);
+        if (videoGo != null)
+            BindVideoHud(videoGo, chapterVideoSkippable);
+    }
+
+    private void FinishChapterVideo(DialogueContent content)
+    {
+        if (!chapterVideoPlaying && !content.HasOptions()) return;
+
+        if (content != null && content.HasOptions())
+        {
+            chapterVideoPlaying = false;
+            SendVideoToBack();
+            TryPresentChapterOptions();
+            return;
+        }
+
+        chapterVideoPlaying = false;
+        StopChapterVideo();
+        NextLine();
+    }
+
+    private void StopStoryAudio()
+    {
+        if (MusicManager.GetInstance() != null)
+            MusicManager.GetInstance().StopBGM();
+        currentBGM = "";
+        if (VoiceManager.GetInstance() != null)
+            VoiceManager.GetInstance().StopVoice();
+    }
+
+    private static void SendVideoToBack()
+    {
+        Transform parent = UIManager.GetInstance() != null
+            ? UIManager.GetInstance().GetLayerFather(E_UI_Layer.System)
+            : null;
+        if (parent == null) return;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (child != null && child.GetComponent<VideoModel>() != null)
+                child.SetAsFirstSibling();
+        }
     }
 
     public void SkipChapterVideo()
@@ -1657,56 +1688,57 @@ public class VNManager : BaseManager<VNManager>
         if (!chapterVideoPlaying || !chapterVideoSkippable) return;
 
         DialogueContent content = GetCurrentDialogueContent();
-        if (content != null && content.HasOptions())
-            return;
-
-        StopChapterVideo();
-        NextLine();
+        FinishChapterVideo(content);
     }
 
-    private void AttachVideoSkipButton(GameObject videoGo)
+    private void BindVideoHud(GameObject videoGo, bool skippable)
     {
-        string path = VNProjectConfig.Instance != null && !string.IsNullOrEmpty(VNProjectConfig.Instance.UI_VideoSkipPath)
-            ? VNProjectConfig.Instance.UI_VideoSkipPath
-            : "VNovelizerRes/VNPrefabs/UI/Video/VideoSkipBtn";
-        GameObject prefab = ResourcesManager.GetInstance().Load<GameObject>(path);
-        GameObject btnGo = prefab != null
-            ? UnityEngine.Object.Instantiate(prefab, videoGo.transform)
-            : CreateFallbackSkipButton(videoGo.transform);
+        Transform skip = FindDeep(videoGo.transform, "VideoSkipBtn");
+        if (skip != null)
+        {
+            skip.gameObject.SetActive(skippable);
+            Button skipButton = skip.GetComponent<Button>();
+            if (skipButton == null) skipButton = skip.GetComponentInChildren<Button>(true);
+            if (skipButton != null)
+            {
+                skipButton.onClick.RemoveAllListeners();
+                skipButton.onClick.AddListener(SkipChapterVideo);
+            }
+        }
 
-        Button button = btnGo.GetComponent<Button>();
-        if (button == null) button = btnGo.GetComponentInChildren<Button>(true);
-        if (button == null) button = btnGo.AddComponent<Button>();
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(SkipChapterVideo);
+        Transform pause = FindDeep(videoGo.transform, "Pause");
+        if (pause == null) pause = FindDeep(videoGo.transform, "Settings");
+        if (pause != null)
+        {
+            pause.gameObject.SetActive(true);
+            Button pauseButton = pause.GetComponent<Button>();
+            if (pauseButton == null) pauseButton = pause.GetComponentInChildren<Button>(true);
+            if (pauseButton != null)
+            {
+                pauseButton.onClick.RemoveAllListeners();
+                pauseButton.onClick.AddListener(OpenPauseFromVideo);
+            }
+        }
     }
 
-    private static GameObject CreateFallbackSkipButton(Transform parent)
+    private static void OpenPauseFromVideo()
     {
-        GameObject go = new GameObject("VideoSkipBtn", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent, false);
-        RectTransform rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(1f, 1f);
-        rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(1f, 1f);
-        rt.anchoredPosition = new Vector2(-24f, -24f);
-        rt.sizeDelta = new Vector2(140f, 48f);
-        go.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.45f);
+        VNGameplayPanel gameplay = UIManager.GetInstance() != null
+            ? UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel")
+            : null;
+        if (gameplay != null)
+            gameplay.OnPause(new UnityEngine.InputSystem.InputAction.CallbackContext());
+    }
 
-        GameObject textGo = new GameObject("Text", typeof(RectTransform));
-        textGo.transform.SetParent(go.transform, false);
-        RectTransform textRt = textGo.GetComponent<RectTransform>();
-        textRt.anchorMin = Vector2.zero;
-        textRt.anchorMax = Vector2.one;
-        textRt.offsetMin = Vector2.zero;
-        textRt.offsetMax = Vector2.zero;
-        TextMeshProUGUI tmp = textGo.AddComponent<TextMeshProUGUI>();
-        tmp.text = "跳过";
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.fontSize = 24;
-        tmp.color = Color.white;
-        tmp.raycastTarget = false;
-        return go;
+    private static Transform FindDeep(Transform root, string name)
+    {
+        if (root.name == name) return root;
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindDeep(root.GetChild(i), name);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private void StopChapterVideo()
@@ -1725,10 +1757,7 @@ public class VNManager : BaseManager<VNManager>
         }
 
         if (string.IsNullOrEmpty(result) || CurrentChapter.FindSegment(result) == null)
-        {
-            Debug.LogError("[VNManager] 选项 result 不是有效的 Segment ID: " + result);
             return;
-        }
 
         EnterSegment(result, 0);
         PlayCurrentLine();
@@ -1737,6 +1766,7 @@ public class VNManager : BaseManager<VNManager>
     public bool IsAutoPlaying() { return isAutoPlaying; }
     public bool IsSkipping() { return isSkipping; }
     public bool IsTextDisplaying() { return isTextDisplaying; }
+    public bool IsChapterVideoPlaying() { return chapterVideoPlaying; }
 
     public void SetConfig(string key, string value)
     {
@@ -1757,7 +1787,7 @@ public class VNManager : BaseManager<VNManager>
         LoadingProgressManager progressManager = LoadingProgressManager.GetInstance();
 
         const string scriptTaskID = "load_script_continue";
-        const string uiTaskID = "ui_VNGameplayPanel";
+        const string uiTaskID = "ui_DialoguePanel";
         const int maxWaitFrames = 120;
 
         VNGameplayPanel gameplayPanel = null;
@@ -1770,7 +1800,7 @@ public class VNManager : BaseManager<VNManager>
             bool scriptDone = scriptProgress >= 1f || scriptProgress < 0f;
             bool uiDone = uiProgress >= 1f || uiProgress < 0f;
 
-            gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             bool panelReady =
                 isGameplayPanelLoadCallbackFired &&
                 gameplayPanel != null &&
@@ -1786,7 +1816,7 @@ public class VNManager : BaseManager<VNManager>
             yield return null;
         }
 
-        gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         if (gameplayPanel == null || gameplayPanel.gameObject == null || !gameplayPanel.gameObject.activeInHierarchy)
         {
             Debug.LogError("[VNManager] 无法获取VNGameplayPanel，继续游戏失败");
@@ -1861,8 +1891,8 @@ public class VNManager : BaseManager<VNManager>
         // 3. 显示 UI (异步过程，UIManager会自动注册并跟踪进度)
         if (HasPlayableContent())
         {
-            // UIManager会自动注册任务 "ui_VNGameplayPanel"，我们只需要等待它完成
-            UIManager.GetInstance().ShowPanel<VNGameplayPanel>("VNGameplayPanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
+            // UIManager会自动注册任务 "ui_DialoguePanel"，我们只需要等待它完成
+            UIManager.GetInstance().ShowPanel<VNGameplayPanel>("DialoguePanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
             {
                 isGameplayPanelLoadCallbackFired = true;
                 VNDebug.LogVerbose("[VNManager] VNGameplayPanel 的 ShowPanel 回调已触发");
@@ -1889,7 +1919,7 @@ public class VNManager : BaseManager<VNManager>
 
     private IEnumerator DelayedStartGameplay()
 {
-    // VNGameplayPanel gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+    // VNGameplayPanel gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
     // // VNGameplayPanel拿不到，考虑文件缺失的情况
     // if (gameplayPanel == null)
     // {
@@ -1904,7 +1934,7 @@ public class VNManager : BaseManager<VNManager>
     //     yield break;
     // }
     
-    VNGameplayPanel gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+    VNGameplayPanel gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
 
     // 如果还没拿到，强制再创建一次
     if (gameplayPanel == null)
@@ -1912,7 +1942,7 @@ public class VNManager : BaseManager<VNManager>
         Debug.LogWarning("[VNManager] DelayedStartGameplay 时未找到 VNGameplayPanel，尝试强制补建...");
 
         UIManager.GetInstance().ShowPanel<VNGameplayPanel>(
-            "VNGameplayPanel",
+            "DialoguePanel",
             VNProjectConfig.Instance.UI_VNGamePlayPath,
             E_UI_Layer.Middle,
             (panel) =>
@@ -1924,7 +1954,7 @@ public class VNManager : BaseManager<VNManager>
         // 最多再等 30 帧
         for (int i = 0; i < 30; i++)
         {
-            gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             if (gameplayPanel != null &&
                 gameplayPanel.gameObject != null &&
                 gameplayPanel.gameObject.activeInHierarchy)
@@ -1938,7 +1968,7 @@ public class VNManager : BaseManager<VNManager>
     }
     
     //再尝试重新拿
-    gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+    gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
     if (gameplayPanel == null || gameplayPanel.gameObject == null || !gameplayPanel.gameObject.activeInHierarchy)
     {
         Debug.LogError("[VNManager] 无法获取VNGameplayPanel，游戏启动失败");
@@ -2160,7 +2190,7 @@ public class VNManager : BaseManager<VNManager>
         // 2. 显示 UI (异步过程，UIManager会自动注册并跟踪进度)
         if (HasPlayableContent())
         {
-            UIManager.GetInstance().ShowPanel<VNGameplayPanel>("VNGameplayPanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
+            UIManager.GetInstance().ShowPanel<VNGameplayPanel>("DialoguePanel", VNProjectConfig.Instance.UI_VNGamePlayPath, E_UI_Layer.Middle, (panel) =>
             {
                 // UI加载完成，UIManager会自动完成任务
                 // 注意：这里不立即执行游戏逻辑，等待OnContinueGameLoadingCompleted回调
@@ -2190,7 +2220,7 @@ public class VNManager : BaseManager<VNManager>
         // yield return null; // 等待一帧
         
         // 获取游戏面板
-        VNGameplayPanel gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        VNGameplayPanel gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         if (gameplayPanel == null)
         {
             Debug.LogError("[VNManager] 无法获取VNGameplayPanel，继续游戏失败");
@@ -2272,7 +2302,7 @@ public class VNManager : BaseManager<VNManager>
 
     private IEnumerator AutoPlayCountdown(float delay)
     {
-        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        var gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         bool isTextTyping = false;
         bool isVoicePlaying = false;
         
@@ -2318,7 +2348,7 @@ public class VNManager : BaseManager<VNManager>
         LoadingProgressManager progressManager = LoadingProgressManager.GetInstance();
 
         const string scriptTaskID = "load_script";
-        const string uiTaskID = "ui_VNGameplayPanel";
+        const string uiTaskID = "ui_DialoguePanel";
         const int maxWaitFrames = 120;
 
         VNGameplayPanel gameplayPanel = null;
@@ -2331,7 +2361,7 @@ public class VNManager : BaseManager<VNManager>
             bool scriptDone = scriptProgress >= 1f || scriptProgress < 0f;
             bool uiDone = uiProgress >= 1f || uiProgress < 0f;
 
-            gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             bool panelReady =
                 isGameplayPanelLoadCallbackFired &&
                 gameplayPanel != null &&
@@ -2347,7 +2377,7 @@ public class VNManager : BaseManager<VNManager>
             yield return null;
         }
 
-        gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+        gameplayPanel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
         if (gameplayPanel == null || gameplayPanel.gameObject == null || !gameplayPanel.gameObject.activeInHierarchy)
         {
             Debug.LogError("[VNManager] 加载任务已结束，但仍无法获取 VNGameplayPanel，游戏启动失败");
@@ -2465,7 +2495,7 @@ public class VNManager : BaseManager<VNManager>
         PoolManager.GetInstance().Clear();
 
         // 关闭游戏面板
-        UIManager.GetInstance().HidePanel("VNGameplayPanel");
+        UIManager.GetInstance().HidePanel("DialoguePanel");
         
         // 【修复2】重新显示画廊面板（如果之前被隐藏了）
         GalleryPanel galleryPanel = UIManager.GetInstance().GetPanel<GalleryPanel>("GalleryPanel");

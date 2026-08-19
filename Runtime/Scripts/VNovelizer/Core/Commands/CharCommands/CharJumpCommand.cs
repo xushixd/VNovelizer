@@ -36,7 +36,7 @@ namespace VNovelizer.Core.Commands
             if (parts.Length >= 3) int.TryParse(parts[2].Trim(), out times);
             if (parts.Length >= 4) float.TryParse(parts[3].Trim(), out height);
 
-            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             if (panel == null) yield break;
 
             currentTarget = panel.GetCharRect(posCode);

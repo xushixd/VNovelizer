@@ -25,9 +25,8 @@ public class VideoModel : MonoBehaviour
     {
         videoPlayer = GetComponent<VideoPlayer>();
         rawImage = GetComponent<RawImage>();
-
-        // 设置VideoPlayer使用URL作为源
-        videoPlayer.source = VideoSource.Url;
+        if (rawImage != null)
+            rawImage.raycastTarget = false;
 
         videoPlayer.loopPointReached += OnLoopPointReached;
         videoPlayer.errorReceived += (vp, msg) => {
@@ -49,32 +48,55 @@ public class VideoModel : MonoBehaviour
         holdLastFrame = keepLastFrame;
         firstPlayEnded = false;
 
-        // 1. 获取配置里的子路径 (比如 "VNovelizerRes/Videos")
-        string subPath = VNProjectConfig.Instance.VideoResPath;
+        string subPath = VNProjectConfig.Instance != null && !string.IsNullOrEmpty(VNProjectConfig.Instance.VideoResPath)
+            ? VNProjectConfig.Instance.VideoResPath
+            : "VNovelizerRes/Videos";
+        string resourceName = CombineResourcePath(subPath, StripExtension(videoName));
+        VideoClip clip = Resources.Load<VideoClip>(resourceName);
+        if (clip != null)
+        {
+            videoPlayer.source = VideoSource.VideoClip;
+            videoPlayer.clip = clip;
+            Debug.Log($"[Video] 准备播放视频: Resources/{resourceName}");
+            StartCoroutine(PlayRoutine());
+            return;
+        }
 
-        // 2. 构建基础目录路径
         string baseDir = Path.Combine(Application.streamingAssetsPath, subPath);
-
-        // 3. 查找视频文件（支持多种格式）
         string fullPath = FindVideoFile(baseDir, videoName);
-
         if (string.IsNullOrEmpty(fullPath))
         {
-            Debug.LogError($"[Video] 无法找到视频文件: {videoName} (在目录 {baseDir} 中)");
+            Debug.LogError($"[Video] 无法找到视频文件: {videoName} (Resources/{resourceName} 或 {baseDir})");
             Close();
             return;
         }
 
-        // 4. 统一路径分隔符为斜杠
         fullPath = fullPath.Replace("\\", "/");
-
-        // 5. 根据平台构建正确的URL
-        string url = GetVideoURL(fullPath);
-
-        Debug.Log($"[Video] 准备播放视频: {url}");
-
-        videoPlayer.url = url;
+        videoPlayer.source = VideoSource.Url;
+        videoPlayer.clip = null;
+        videoPlayer.url = GetVideoURL(fullPath);
+        Debug.Log($"[Video] 准备播放视频: {videoPlayer.url}");
         StartCoroutine(PlayRoutine());
+    }
+
+    private static string CombineResourcePath(string folder, string videoName)
+    {
+        folder = (folder ?? "").Replace("\\", "/").Trim('/');
+        videoName = (videoName ?? "").Replace("\\", "/").Trim('/');
+        if (string.IsNullOrEmpty(folder)) return videoName;
+        if (string.IsNullOrEmpty(videoName)) return folder;
+        return folder + "/" + videoName;
+    }
+
+    private static string StripExtension(string videoName)
+    {
+        if (string.IsNullOrEmpty(videoName)) return videoName;
+        foreach (string ext in SupportedExtensions)
+        {
+            if (videoName.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
+                return videoName.Substring(0, videoName.Length - ext.Length);
+        }
+        return videoName;
     }
 
     /// <summary>
@@ -169,7 +191,14 @@ public class VideoModel : MonoBehaviour
     private void OnLoopPointReached(VideoPlayer vp)
     {
         if (loopAfterEnd)
+        {
+            if (!firstPlayEnded)
+            {
+                firstPlayEnded = true;
+                onFirstEnd?.Invoke();
+            }
             return;
+        }
 
         if (firstPlayEnded)
             return;

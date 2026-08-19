@@ -166,13 +166,6 @@ public class ResourceManagerWindow : EditorWindow
 
         if (!Directory.Exists(path)) return;
 
-        // Video 类型在 StreamingAssets 中，需要特殊处理
-        if (currentType == ResType.Video)
-        {
-            RefreshVideoPane(path);
-            return;
-        }
-
         string filter = GetSearchFilter(currentType);
         string[] guids = AssetDatabase.FindAssets(filter, new[] { path });
 
@@ -185,44 +178,6 @@ public class ResourceManagerWindow : EditorWindow
                 continue;
 
             Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-            CreateAssetCard(asset, fileName, assetPath);
-        }
-    }
-
-    /// <summary>
-    /// 刷新视频面板（StreamingAssets 中的视频文件）
-    /// </summary>
-    private void RefreshVideoPane(string path)
-    {
-        // 支持的视频文件扩展名
-        string[] videoExtensions = { ".mp4", ".mov", ".webm", ".avi", ".asf", ".wmv" };
-
-        // 获取目录下所有文件
-        string[] allFiles = Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
-
-        foreach (string filePath in allFiles)
-        {
-            string extension = Path.GetExtension(filePath).ToLower();
-            
-            // 检查是否是视频文件
-            if (!videoExtensions.Contains(extension))
-                continue;
-
-            string fileName = Path.GetFileNameWithoutExtension(filePath);
-            string assetPath = filePath.Replace('\\', '/');
-
-            // 过滤搜索关键词
-            if (!string.IsNullOrEmpty(searchKeyword) && !fileName.ToLower().Contains(searchKeyword))
-                continue;
-
-            // 对于 StreamingAssets 中的文件，使用 DefaultAsset
-            Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-            if (asset == null)
-            {
-                // 如果无法加载为资源，创建一个占位符对象
-                asset = new UnityEngine.Object();
-            }
-            
             CreateAssetCard(asset, fileName, assetPath);
         }
     }
@@ -308,12 +263,6 @@ public class ResourceManagerWindow : EditorWindow
         var config = VNProjectConfig.Instance;
         if (config == null) return "";
 
-        // Video 类型使用 StreamingAssets，其他使用 Resources
-        if (type == ResType.Video)
-        {
-            return "Assets/StreamingAssets/" + config.VideoResPath;
-        }
-
         string prefix = "Assets/Resources/";
         switch (type)
         {
@@ -321,6 +270,7 @@ public class ResourceManagerWindow : EditorWindow
             case ResType.BGM: return prefix + config.BgmResPath;
             case ResType.SFX: return prefix + config.SFXResPath;
             case ResType.Voice: return prefix + config.VoiceResPath;
+            case ResType.Video: return prefix + config.VideoResPath;
             default: return "";
         }
     }
@@ -343,8 +293,7 @@ public class ResourceManagerWindow : EditorWindow
     {
         if (type == ResType.Background) return "t:Sprite";
         if (type == ResType.BGM || type == ResType.SFX || type == ResType.Voice) return "t:AudioClip";
-        // Video 在 StreamingAssets 中是原始文件，使用 DefaultAsset 或直接查找文件扩展名
-        if (type == ResType.Video) return ""; // 空字符串表示查找所有文件，我们会在 RefreshRightPane 中过滤
+        if (type == ResType.Video) return "t:VideoClip";
         return "t:Object";
     }
 }

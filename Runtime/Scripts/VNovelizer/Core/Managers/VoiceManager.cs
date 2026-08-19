@@ -115,7 +115,7 @@ public class VoiceManager : BaseManager<VoiceManager>
 
         if (clip == null || voiceSource == null)
         {
-            Debug.LogWarning($"[VoiceManager] 语音加载失败: clip或voiceSource为空。若有意为之，请忽略该警告");
+            Debug.LogWarning($"[VoiceManager] 语音加载失败: Resources/{resourcePath} 找不到 AudioClip，或 VoiceSource 未初始化");
             isVoiceRunning = false;
             currentLoadCoroutine = null;
             yield break;

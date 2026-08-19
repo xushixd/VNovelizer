@@ -193,7 +193,7 @@ public class UIEditorWindow : EditorWindow
     {
         switch (type)
         {
-            case UIType.Gameplay: return "VNGameplayPanel";
+            case UIType.Gameplay: return "DialoguePanel";
             case UIType.Pause: return "PausePanel";
             case UIType.History: return "HistoryPanel";
             case UIType.SaveLoad: return "SaveLoadPanel";

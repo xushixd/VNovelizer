@@ -50,6 +50,7 @@ public class VNGameplayPanel : BasePanel
     
     // 【新增】存储每个位置的基准位置（用于 offset 应用，避免累加）
     private Dictionary<string, Vector2> baseCharPositions = new Dictionary<string, Vector2>();
+    private readonly Dictionary<string, Vector2> charSlotSizes = new Dictionary<string, Vector2>();
 
     // 【新增】存储对话文本的默认属性（用于 t_color 和 t_size 命令的恢复）
     private Color? defaultDialogueTextColor = null;
@@ -106,6 +107,9 @@ public class VNGameplayPanel : BasePanel
         charLeftImage = GetControl<Image>("Char_Left");
         charMidImage = GetControl<Image>("Char_Mid");
         charRightImage = GetControl<Image>("Char_Right");
+        CacheCharSlotSize(charLeftImage, "L");
+        CacheCharSlotSize(charMidImage, "M");
+        CacheCharSlotSize(charRightImage, "R");
         speakerBox = GetControl<Image>("SpeakerBox");
         speakerText = GetControl<TMP_Text>("SpeakerText");
         dialogueText = GetControl<TMP_Text>("DialougeText");
@@ -294,6 +298,8 @@ public class VNGameplayPanel : BasePanel
                     UpdateSkipButtonState();
                     return;
                 }
+                if (VNManager.GetInstance() != null && VNManager.GetInstance().IsChapterVideoPlaying())
+                    return;
 
                 // 限制快进时 NextLine 调用频率，降低 TimeScale>1 时的 CPU 压力
                 float now = Time.unscaledTime;
@@ -424,6 +430,8 @@ public class VNGameplayPanel : BasePanel
         VNDebug.LogVerbose($"[VNGameplayPanel] OnConfirm 被调用 - 状态: {GameStateManager.GetInstance().CurrentState}, isAutoPlaying: {isAutoPlaying}, isUIHidden: {isUIHidden}, isTextTyping: {isTextTyping}");
 
         if (!GameStateManager.GetInstance().CanInteractGameplay())
+            return;
+        if (VNManager.GetInstance() != null && VNManager.GetInstance().IsChapterVideoPlaying())
             return;
 
         if (IsPointerOverGameObjectNow())
@@ -646,6 +654,8 @@ public class VNGameplayPanel : BasePanel
     {
         if (!GameStateManager.GetInstance().CanInteractGameplay())
             return;
+        if (VNManager.GetInstance() != null && VNManager.GetInstance().IsChapterVideoPlaying())
+            return;
         if (IsPointerOverGameObjectNow())
             return;
         if (!isAutoPlaying && !isUIHidden)
@@ -743,37 +753,39 @@ public class VNGameplayPanel : BasePanel
             CharacterProfile profile = charResMgr.TryGetCharacterProfile(speaker);
             if (profile != null && profile.SpeakerBox != null)
             {
-                // 情况1：找到角色配置且 SpeakerBox 有引用
-                // 设置姓名框为 profile 中的 SpeakerBox Sprite
                 if (speakerBox != null)
-                {
                     speakerBox.sprite = profile.SpeakerBox;
-                }
-                // SpeakerText 不显示任何内容
                 if (speakerText != null)
-                {
-                    speakerText.text = "";
-                }
+                    speakerText.text = ResolveSpeakerName(profile, speaker);
+                return;
+            }
+            if (profile != null && speakerText != null)
+            {
+                speakerText.text = ResolveSpeakerName(profile, speaker);
+                ApplyDefaultSpeakerBox();
                 return;
             }
         }
 
-        // 情况2：CharacterProfile.SpeakerBox 无引用或找不到角色配置
-        // 直接显示用户在 Excel 中写的 Speaker 内容（无论是什么）
         if (speakerText != null)
-        {
             speakerText.text = speaker;
-        }
-        // 设置默认 SpeakerBox Sprite（优先使用面板级配置，其次使用全局配置）
-        if (speakerBox != null)
-        {
-            Sprite defaultSprite = defaultSpeakerBoxSprite; // 优先使用面板级配置
-            if (defaultSprite == null && VNProjectConfig.Instance != null)
-            {
-                defaultSprite = VNProjectConfig.Instance.DefaultSpeakerBoxSprite; // 使用全局配置
-            }
-            speakerBox.sprite = defaultSprite;
-        }
+        ApplyDefaultSpeakerBox();
+    }
+
+    private static string ResolveSpeakerName(CharacterProfile profile, string fallback)
+    {
+        if (profile != null && !string.IsNullOrWhiteSpace(profile.DisplayName))
+            return profile.DisplayName;
+        return fallback ?? "";
+    }
+
+    private void ApplyDefaultSpeakerBox()
+    {
+        if (speakerBox == null) return;
+        Sprite defaultSprite = defaultSpeakerBoxSprite;
+        if (defaultSprite == null && VNProjectConfig.Instance != null)
+            defaultSprite = VNProjectConfig.Instance.DefaultSpeakerBoxSprite;
+        speakerBox.sprite = defaultSprite;
     }
 
     private void OnUpdateDialogue(Dictionary<string, string> dialogueInfo)
@@ -907,29 +919,19 @@ public class VNGameplayPanel : BasePanel
             if (sprite != null)
             {
                 RectTransform charRect = charImage.rectTransform;
-                
-                // 保存原始锚点设置（SetNativeSize会重置锚点）
-                Vector2 savedAnchorMin = charRect.anchorMin;
-                Vector2 savedAnchorMax = charRect.anchorMax;
-                
-                // 设置sprite并恢复原始尺寸（避免拉伸）
                 charImage.sprite = sprite;
                 charImage.color = Color.white;
+                charImage.preserveAspect = true;
                 charImage.gameObject.SetActive(true);
-                
-                // 使用SetNativeSize()恢复原始尺寸，保证不会产生拉伸
-                charImage.SetNativeSize();
-                
-                // 恢复锚点设置（SetNativeSize会将anchorMax设为anchorMin，需要恢复）
-                charRect.anchorMin = savedAnchorMin;
-                charRect.anchorMax = savedAnchorMax;
-                
+
                 // 位置代码转换：VNManager 内部使用 "Left"/"Mid"/"Right"，但 API 使用 "L"/"M"/"R"
                 string posCode = position;
                 if (position == "Left") posCode = "L";
                 else if (position == "Mid") posCode = "M";
                 else if (position == "Right") posCode = "R";
-                
+
+                FitCharacterToSlot(charImage, posCode);
+
                 // 【关键修复】保存基准位置（第一次显示时）
                 // SetNativeSize()并恢复锚点后，此时的anchoredPosition是基准位置
                 // 如果该位置还没有保存基准位置，则保存它
@@ -1021,7 +1023,6 @@ public class VNGameplayPanel : BasePanel
             }
             else
             {
-                Debug.LogWarning($"[VNGameplayPanel] 角色 {characterID} 没有找到情绪 {emotion} 的头像");
                 if (headProfileTransform != null) headProfileTransform.gameObject.SetActive(false);
                 return;
             }
@@ -1483,6 +1484,32 @@ public class VNGameplayPanel : BasePanel
     }
 
     public Transform GetEffectLayer() => effectLayer;
+
+    private void CacheCharSlotSize(Image image, string posCode)
+    {
+        if (image == null || charSlotSizes.ContainsKey(posCode)) return;
+        Vector2 size = image.rectTransform.sizeDelta;
+        if (size.x <= 1f || size.y <= 1f) size = new Vector2(500f, 1000f);
+        charSlotSizes[posCode] = size;
+        image.preserveAspect = true;
+    }
+
+    private void FitCharacterToSlot(Image image, string posCode)
+    {
+        if (image == null || image.sprite == null) return;
+        CacheCharSlotSize(image, posCode);
+        Vector2 slot;
+        if (!charSlotSizes.TryGetValue(posCode, out slot))
+            slot = new Vector2(500f, 1000f);
+
+        Vector2 spriteSize = image.sprite.rect.size;
+        if (spriteSize.x <= 0f || spriteSize.y <= 0f) return;
+        float fit = Mathf.Min(slot.x / spriteSize.x, slot.y / spriteSize.y);
+        RectTransform rt = image.rectTransform;
+        rt.pivot = new Vector2(0.5f, 0f);
+        rt.sizeDelta = spriteSize * fit;
+        image.preserveAspect = true;
+    }
     
     /// <summary>
     /// 检查打字机效果是否正在进行

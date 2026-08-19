@@ -11,6 +11,9 @@ public class CharacterProfile : ScriptableObject
 {
     // 角色ID（唯一标识）
     public string CharacterID;
+
+    [Tooltip("对话框显示的名字；为空则显示 CharacterID")]
+    public string DisplayName;
     
     // 立绘资源映射
     public List<ElementSprite> ElementSprites = new List<ElementSprite>();
@@ -69,29 +72,15 @@ public class CharacterProfile : ScriptableObject
     /// <returns>对应的头像Sprite，如果找不到则返回null</returns>
     public Sprite GetHeadSprite(string element)
     {
-        if (string.IsNullOrEmpty(element))
-        {
-            Debug.LogError($"Emotion is null or empty for character '{CharacterID}' (HeadSprite)");
+        if (string.IsNullOrEmpty(element) || HeadSprites == null)
             return null;
-        }
-        
+
         foreach (var headSprite in HeadSprites)
         {
-            if (headSprite.Element == element)
-            {
-                if (headSprite.Sprite != null)
-                {
-                    return headSprite.Sprite;
-                }
-                else
-                {
-                    Debug.LogError($"  HeadSprite for emotion '{element}' is null for character '{CharacterID}'");
-                    return null;
-                }
-            }
+            if (headSprite != null && headSprite.Element == element)
+                return headSprite.Sprite;
         }
-        
-        Debug.LogError($"  HeadSprite emotion '{element}' not found for character '{CharacterID}'");
+
         return null;
     }
 

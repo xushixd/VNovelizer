@@ -49,7 +49,7 @@ public class VNProjectConfigEditor : Editor
 
         // 4. UI 预制体路径 (Foldout)
         var uiFoldout = new Foldout { text = "UI 预制体路径", value = false };
-        uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_VNGamePlayPath"), "游戏面板"));
+        uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_VNGamePlayPath"), "对话面板"));
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_HistoryPath"), "历史记录"));
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_SettingsPath"), "设置面板"));
         uiFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_SaveLoadPath"), "存读档面板"));
@@ -66,7 +66,7 @@ public class VNProjectConfigEditor : Editor
         //音效/视频Obj路径(Foldout)
         var objFoldout = new Foldout { text = "音效/视频Obj路径", value = false };
         objFoldout.Add(new PropertyField(serializedObject.FindProperty("SoundObjPath"), "音效Obj"));
-        objFoldout.Add(new PropertyField(serializedObject.FindProperty("VideoObjPath"), "视频Obj"));
+        objFoldout.Add(new PropertyField(serializedObject.FindProperty("VideoObjPath"), "视频面板"));
         objFoldout.Add(new PropertyField(serializedObject.FindProperty("UI_VideoSkipPath"), "视频跳过按钮"));
         root.Add(objFoldout);
 

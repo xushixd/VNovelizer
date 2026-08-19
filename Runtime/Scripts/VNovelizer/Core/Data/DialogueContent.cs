@@ -361,16 +361,21 @@ public class DialogueContent
 
     private string BuildChar(string slot)
     {
-        if (stageCharacters == null) return "";
-        for (int i = 0; i < stageCharacters.Count; i++)
+        if (stageCharacters != null)
         {
-            StageCharacterData stage = stageCharacters[i];
-            if (stage == null) continue;
-            if (NormalizeSlot(stage.slot) != slot) continue;
-            if (string.IsNullOrEmpty(stage.characterId) || string.IsNullOrEmpty(stage.emotionId))
-                return "";
-            return stage.characterId + "_" + stage.emotionId;
+            for (int i = 0; i < stageCharacters.Count; i++)
+            {
+                StageCharacterData stage = stageCharacters[i];
+                if (stage == null) continue;
+                if (NormalizeSlot(stage.slot) != slot) continue;
+                if (string.IsNullOrEmpty(stage.characterId) || string.IsNullOrEmpty(stage.emotionId))
+                    return "";
+                return stage.characterId + "_" + stage.emotionId;
+            }
         }
+
+        if (slot == "middle" && speaker != null && !string.IsNullOrEmpty(speaker.characterId) && !string.IsNullOrEmpty(speaker.emotionId))
+            return speaker.characterId + "_" + speaker.emotionId;
         return "";
     }
 

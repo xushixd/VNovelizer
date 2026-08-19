@@ -55,9 +55,8 @@ public class VNovelizerSetup : EditorWindow
             return;
         }
 
-        // 2. 创建基础目录 (StreamingAssets, Scenes)
+        // 2. 创建基础目录
         CreateDir(assetsRoot, "StreamingAssets");
-        CreateDir(assetsRoot, "StreamingAssets/VNovelizerRes/Videos");
         CreateDir(assetsRoot, "Scenes");
 
         // 3. 创建 Resources 根目录
@@ -81,8 +80,8 @@ public class VNovelizerSetup : EditorWindow
                     "VNScripts",
                     "Materials",
                     "VFX",
-                    "VNPrefabs"
-                    // Videos 不进 Resources，见下方拷到 StreamingAssets
+                    "VNPrefabs",
+                    "Videos"
                 };
 
                 foreach (var folder in foldersToCopy)
@@ -112,13 +111,6 @@ public class VNovelizerSetup : EditorWindow
                     AddSceneToBuildSettings("Assets/Scenes/VNDebugScene.unity");
                 }
 
-                string videoSource = Path.Combine(resRootSource, "Videos");
-                string videoDest = Path.Combine(assetsRoot, "StreamingAssets/VNovelizerRes/Videos");
-                if (Directory.Exists(videoSource))
-                {
-                    Debug.Log("[Setup] 正在复制 Videos -> StreamingAssets...");
-                    CopyDirectory(videoSource, videoDest);
-                }
             }
         }
 

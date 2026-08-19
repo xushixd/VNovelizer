@@ -35,7 +35,7 @@ namespace VNovelizer.Core.UI.UnregisteredCommand
             //     Debug.LogError($"[JumpCommand] 未找到指定的行ID: {targetID}");
             //     return false;
             // }
-            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             panel?.OnHide(default(InputAction.CallbackContext));
             return true;
         }

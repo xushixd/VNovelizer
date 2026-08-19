@@ -369,6 +369,16 @@ public class CharacterEditorWindow : EditorWindow
         headerBox.Add(deleteBtn);
         rightPane.Add(headerBox);
 
+        var displayNameField = new TextField("显示名") { value = profile.DisplayName ?? "" };
+        displayNameField.style.marginBottom = 8;
+        displayNameField.RegisterCallback<FocusOutEvent>(_ =>
+        {
+            if (profile.DisplayName == displayNameField.value) return;
+            profile.DisplayName = displayNameField.value;
+            EditorUtility.SetDirty(profile);
+        });
+        rightPane.Add(displayNameField);
+
         // 2. 中部：左右分栏 (左侧基础配置，右侧预览图)
         var middleContainer = new VisualElement();
         middleContainer.style.flexDirection = FlexDirection.Row;

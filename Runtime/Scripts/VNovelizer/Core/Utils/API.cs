@@ -16,7 +16,7 @@ namespace VNovelizer.Core.API
 
         private static VNGameplayPanel GetPanel()
         {
-            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("VNGameplayPanel");
+            var panel = UIManager.GetInstance().GetPanel<VNGameplayPanel>("DialoguePanel");
             if (panel == null)
             {
                 // 尝试直接在场景里找 (应对 UIManager 字典更新延迟)
@@ -338,7 +338,7 @@ namespace VNovelizer.Core.API
             }
 
             string path = config.VideoObjPath;
-            GameObject prefab = ResourcesManager.GetInstance().Load<GameObject>(path);
+            GameObject prefab = Resources.Load<GameObject>(path);
 
             if (prefab == null)
             {

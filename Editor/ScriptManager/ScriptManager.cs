@@ -19,6 +19,8 @@ public class ScriptManagerWindow : EditorWindow
 
     private ListView scriptList;
     private MultiColumnListView previewTable;
+    private ChapterEditorPane chapterEditor;
+    private VisualElement tableHost;
     private Label statusLabel;
 
     private List<ScriptFileEntry> scriptFiles = new List<ScriptFileEntry>();
@@ -124,10 +126,13 @@ public class ScriptManagerWindow : EditorWindow
             element.Q<Button>("Play").clickable = new Clickable(() => QuickPlay(entry));
             element.Q<Button>("Delete").clickable = new Clickable(() => DeleteScript(entry));
 
-            element.UnregisterCallback<MouseDownEvent>(OnItemMouseDown);
-            element.RegisterCallback<MouseDownEvent>(OnItemMouseDown);
-            void OnItemMouseDown(MouseDownEvent evt)
+            element.UnregisterCallback<PointerDownEvent>(OnItemPointerDown);
+            element.RegisterCallback<PointerDownEvent>(OnItemPointerDown);
+            void OnItemPointerDown(PointerDownEvent evt)
             {
+                if (evt.button != 0) return;
+                if (HitsButton(evt.target as VisualElement)) return;
+                SelectScript(index);
                 if (evt.clickCount == 2) OpenScriptFile(entry);
             }
         };
@@ -135,7 +140,7 @@ public class ScriptManagerWindow : EditorWindow
         scriptList.itemsSource = scriptFiles;
         scriptList.style.flexGrow = 1;
         scriptList.selectionType = SelectionType.Single;
-        scriptList.selectionChanged += OnSelectionChanged;
+        scriptList.selectedIndicesChanged += OnSelectedIndicesChanged;
         leftPane.Add(scriptList);
         splitView.Add(leftPane);
 
@@ -144,16 +149,28 @@ public class ScriptManagerWindow : EditorWindow
         rightPane.style.paddingTop = 10;
         rightPane.style.paddingRight = 10;
         rightPane.style.paddingBottom = 10;
-        rightPane.Add(new Label("预览区域 (只读)") { style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 5 } });
+        rightPane.style.flexGrow = 1;
+        rightPane.Add(new Label("章节结构") { style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 5 } });
         statusLabel = new Label("就绪") { style = { height = 20, color = Color.green } };
         rightPane.Add(statusLabel);
+        chapterEditor = new ChapterEditorPane();
+        chapterEditor.style.display = DisplayStyle.None;
+        rightPane.Add(chapterEditor);
+        tableHost = new VisualElement { style = { flexGrow = 1 } };
         previewTable = new MultiColumnListView();
         previewTable.style.flexGrow = 1;
         previewTable.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
-        rightPane.Add(previewTable);
+        tableHost.Add(previewTable);
+        rightPane.Add(tableHost);
         splitView.Add(rightPane);
 
         RefreshList();
+    }
+
+    private void OnFocus()
+    {
+        if (chapterEditor != null && selectedFile != null && selectedFile.Format == ScriptFormat.Json)
+            chapterEditor.RefreshAssetLists();
     }
 
     private void RefreshList()
@@ -179,25 +196,71 @@ public class ScriptManagerWindow : EditorWindow
         }
 
         scriptFiles = scriptFiles.OrderByDescending(e => e.File.LastWriteTime).ToList();
-        selectedFile = null;
         scriptList.itemsSource = scriptFiles;
         scriptList.Rebuild();
         statusLabel.text = $"刷新完成，共 {scriptFiles.Count} 个剧本";
+        if (scriptFiles.Count > 0) SelectScript(0);
+        else
+        {
+            selectedFile = null;
+            if (chapterEditor != null) chapterEditor.ClearEditor();
+        }
     }
 
-    private void OnSelectionChanged(IEnumerable<object> selection)
+    private void OnSelectedIndicesChanged(IEnumerable<int> indices)
     {
-        selectedFile = selection.OfType<ScriptFileEntry>().FirstOrDefault();
-        if (selectedFile != null) LoadPreview(selectedFile);
+        int index = -1;
+        foreach (int item in indices)
+        {
+            index = item;
+            break;
+        }
+        if (index >= 0) SelectScript(index);
+    }
+
+    private void SelectScript(int index)
+    {
+        if (index < 0 || index >= scriptFiles.Count) return;
+        ScriptFileEntry entry = scriptFiles[index];
+        if (scriptList.selectedIndex != index)
+            scriptList.SetSelection(index);
+        if (selectedFile != null && selectedFile.File.FullName == entry.File.FullName)
+            return;
+        selectedFile = entry;
+        LoadPreview(entry);
+    }
+
+    private static bool HitsButton(VisualElement target)
+    {
+        while (target != null)
+        {
+            if (target is Button) return true;
+            target = target.parent;
+        }
+        return false;
     }
 
     private void LoadPreview(ScriptFileEntry entry)
     {
         previewTable.columns.Clear();
         previewTable.itemsSource = null;
+        if (chapterEditor != null) chapterEditor.ClearEditor();
 
         try
         {
+            if (entry.Format == ScriptFormat.Json)
+            {
+                ChapterData chapter = ScriptParser.TryParseChapter(File.ReadAllText(entry.File.FullName));
+                if (chapter != null)
+                {
+                    ShowChapterEditor(true);
+                    chapterEditor.Load(entry.File.FullName, chapter);
+                    statusLabel.text = $"已加载：{entry.File.Name}";
+                    return;
+                }
+            }
+
+            ShowChapterEditor(false);
             if (entry.Format == ScriptFormat.Excel) LoadExcelPreview(entry.File);
             else LoadTextPreview(entry.File);
             statusLabel.text = $"已加载预览：{entry.File.Name}";
@@ -207,6 +270,12 @@ public class ScriptManagerWindow : EditorWindow
             Debug.LogError($"预览失败: {e.Message}");
             statusLabel.text = $"预览失败：{e.Message}";
         }
+    }
+
+    private void ShowChapterEditor(bool show)
+    {
+        if (chapterEditor != null) chapterEditor.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+        if (tableHost != null) tableHost.style.display = show ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     private void LoadExcelPreview(FileInfo file)
@@ -511,9 +580,11 @@ public class ScriptManagerWindow : EditorWindow
         if (entry.Format == ScriptFormat.Json || entry.Format == ScriptFormat.Csv)
         {
             ScriptParser.ScriptData data = ScriptParser.ParseText(File.ReadAllText(entry.File.FullName));
-            if (data == null || data.Lines.Count == 0)
+            bool hasChapter = data != null && data.IsChapter && data.Chapter != null && data.Chapter.segments != null && data.Chapter.segments.Count > 0;
+            bool hasLines = data != null && data.Lines != null && data.Lines.Count > 0;
+            if (!hasChapter && !hasLines)
             {
-                EditorUtility.DisplayDialog("无法试玩", "该剧本无法解析或没有有效剧情行。", "确定");
+                EditorUtility.DisplayDialog("无法试玩", "该剧本无法解析或没有有效剧情。", "确定");
                 return;
             }
         }
