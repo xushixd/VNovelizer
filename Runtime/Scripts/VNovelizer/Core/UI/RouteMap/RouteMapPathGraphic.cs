@@ -7,16 +7,18 @@ using UnityEngine.UI;
 public class RouteMapPathGraphic : MaskableGraphic
 {
     [SerializeField] private Vector2 start;
-    [SerializeField] private Vector2 control;
+    [SerializeField] private Vector2 control1;
+    [SerializeField] private Vector2 control2;
     [SerializeField] private Vector2 end;
     [SerializeField] private float thickness = 4f;
 
     private const int Segments = 24;
 
-    public void SetPath(Vector2 pathStart, Vector2 pathControl, Vector2 pathEnd, float pathThickness, Color pathColor)
+    public void SetPath(Vector2 pathStart, Vector2 pathControl1, Vector2 pathControl2, Vector2 pathEnd, float pathThickness, Color pathColor)
     {
         start = pathStart;
-        control = pathControl;
+        control1 = pathControl1;
+        control2 = pathControl2;
         end = pathEnd;
         thickness = pathThickness;
         color = pathColor;
@@ -39,8 +41,7 @@ public class RouteMapPathGraphic : MaskableGraphic
 
     private Vector2 Evaluate(float t)
     {
-        float u = 1f - t;
-        return u * u * start + 2f * u * t * control + t * t * end;
+        return RouteMapGraph.EvaluateCubic(start, control1, control2, end, t);
     }
 
     private void AddQuad(VertexHelper vh, Vector2 a, Vector2 b, float width)

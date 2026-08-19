@@ -4,6 +4,8 @@
     "references": [
         "VNovelizer.Runtime",
         "ExcelDataReader",
+        "Unity.TextMeshPro",
+        "Unity.UGUI",
         "Unity.Localization.Editor",
         "Unity.Localization",
         "Unity.ResourceManager"

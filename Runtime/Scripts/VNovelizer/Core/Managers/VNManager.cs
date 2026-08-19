@@ -733,6 +733,9 @@ public class VNManager : BaseManager<VNManager>
         }
 
         CurrentLineIndex = Mathf.Clamp(contentIndex, 0, StoryLines.Count - 1);
+
+        if (!string.IsNullOrEmpty(CurrentSegmentId) && GlobalDataManager.GetInstance() != null)
+            GlobalDataManager.GetInstance().UnlockRoute(CurrentSegmentId);
     }
 
     private bool TryGoToNextSegment()

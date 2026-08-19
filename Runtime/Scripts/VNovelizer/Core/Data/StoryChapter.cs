@@ -67,7 +67,7 @@ public class ChapterData
             type = DialogueContent.TypeName,
             speaker = new DialogueSpeakerData(),
             text = "",
-            backgroundAssetId = "School_Day",
+            backgroundAssetId = "Shrine",
             voiceAssetId = "",
             bgmAssetId = "",
             stageCharacters = new List<StageCharacterData>()

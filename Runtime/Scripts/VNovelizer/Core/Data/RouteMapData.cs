@@ -70,6 +70,7 @@ public class RouteMapChapter
 {
     public string id = "";
     public string title = "第一章";
+    public string scriptName = "";
 
     [Tooltip("右上角提示，例如本章需要留意的人物或条件")]
     [TextArea(2, 6)]

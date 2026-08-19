@@ -185,14 +185,14 @@ public static class ScriptParser
     public static string SerializeChapter(ChapterData chapter)
     {
         JsonData root = new JsonData();
-        root.SetJsonType(JsonType.Object);
+        root.SetJsonType(LitJson.JsonType.Object);
         if (chapter == null) chapter = new ChapterData();
         root["id"] = chapter.id ?? "";
         root["title"] = chapter.title ?? "";
         root["entrySegmentId"] = chapter.entrySegmentId ?? "";
 
         JsonData segmentArray = new JsonData();
-        segmentArray.SetJsonType(JsonType.Array);
+        segmentArray.SetJsonType(LitJson.JsonType.Array);
         if (chapter.segments != null)
         {
             for (int i = 0; i < chapter.segments.Count; i++)
@@ -262,9 +262,9 @@ public static class ScriptParser
     public static string SerializeJsonLines(List<StoryLine> lines)
     {
         JsonData root = new JsonData();
-        root.SetJsonType(JsonType.Object);
+        root.SetJsonType(LitJson.JsonType.Object);
         JsonData array = new JsonData();
-        array.SetJsonType(JsonType.Array);
+        array.SetJsonType(LitJson.JsonType.Array);
 
         if (lines != null)
         {
@@ -322,12 +322,12 @@ public static class ScriptParser
     private static JsonData WriteSegment(SegmentData segment)
     {
         JsonData item = new JsonData();
-        item.SetJsonType(JsonType.Object);
+        item.SetJsonType(LitJson.JsonType.Object);
         item["id"] = segment.id ?? "";
         item["title"] = segment.title ?? "";
 
         JsonData contentArray = new JsonData();
-        contentArray.SetJsonType(JsonType.Array);
+        contentArray.SetJsonType(LitJson.JsonType.Array);
         if (segment.content != null)
         {
             for (int i = 0; i < segment.content.Count; i++)
@@ -379,7 +379,7 @@ public static class ScriptParser
     private static JsonData WriteLegacyStoryLine(StoryLine line)
     {
         JsonData item = new JsonData();
-        item.SetJsonType(JsonType.Object);
+        item.SetJsonType(LitJson.JsonType.Object);
         item["ID"] = line.ID ?? "";
         item["Speaker"] = line.Speaker ?? "";
         item["HeadProfile"] = line.HeadProfile ?? "";

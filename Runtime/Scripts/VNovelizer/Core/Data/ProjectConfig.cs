@@ -137,6 +137,12 @@ public class VNProjectConfig : ScriptableObject
     [Tooltip("路线图数据容器在Resources下的相对路径 (例如: VNovelizerRes/GalleryContent/RouteMap)")]
     public string RouteMap_DataPath = "VNovelizerRes/GalleryContent/RouteMap";
 
+    [Tooltip("开发者模式下路线图全解锁")]
+    public bool RouteMapDeveloperMode = false;
+
+    [Tooltip("游玩时未走过的节点：隐藏或锁定")]
+    public RouteMapUnvisitedMode RouteMapUnvisitedMode = RouteMapUnvisitedMode.Hide;
+
     [Header("=== UI 默认资源 (UI Default Resources) ===")]
     [Tooltip("默认姓名框 Sprite（当角色没有配置 SpeakerBox 时使用）")]
     public Sprite DefaultSpeakerBoxSprite;

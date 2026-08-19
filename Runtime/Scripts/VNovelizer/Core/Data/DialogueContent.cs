@@ -399,14 +399,14 @@ public class DialogueContent
     private static JsonData NewObject()
     {
         JsonData data = new JsonData();
-        data.SetJsonType(JsonType.Object);
+        data.SetJsonType(LitJson.JsonType.Object);
         return data;
     }
 
     private static JsonData NewArray()
     {
         JsonData data = new JsonData();
-        data.SetJsonType(JsonType.Array);
+        data.SetJsonType(LitJson.JsonType.Array);
         return data;
     }
 

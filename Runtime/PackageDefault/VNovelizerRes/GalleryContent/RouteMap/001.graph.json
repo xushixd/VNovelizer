@@ -1,0 +1,48 @@
+{
+  "id": "001",
+  "title": "第一章",
+  "scriptName": "Chapter001",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "001-0001",
+      "title": "开场",
+      "kind": "Event",
+      "x": 180,
+      "y": 420,
+      "pathBend": 80,
+      "startUnlocked": true,
+      "scriptName": "Chapter001",
+      "startLineID": "001-0001-00000",
+      "endLineID": ""
+    },
+    {
+      "id": "001-0002",
+      "title": "进去坐坐",
+      "kind": "Event",
+      "x": 500,
+      "y": 280,
+      "pathBend": 80,
+      "startUnlocked": false,
+      "scriptName": "Chapter001",
+      "startLineID": "001-0002-00001",
+      "endLineID": ""
+    },
+    {
+      "id": "001-0003",
+      "title": "先在外面",
+      "kind": "Event",
+      "x": 500,
+      "y": 560,
+      "pathBend": 80,
+      "startUnlocked": false,
+      "scriptName": "Chapter001",
+      "startLineID": "001-0003-00001",
+      "endLineID": ""
+    }
+  ],
+  "edges": [
+    { "from": "001-0001", "to": "001-0002" },
+    { "from": "001-0001", "to": "001-0003" }
+  ]
+}

@@ -76,6 +76,8 @@ public class VNProjectConfigEditor : Editor
         galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("Music_DataPath"), "音乐数据容器路径"));
         galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("Scene_DataPath"), "场景数据容器路径"));
         galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("RouteMap_DataPath"), "路线图数据容器路径"));
+        galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("RouteMapDeveloperMode"), "路线图开发者模式（全解锁）"));
+        galleryFoldout.Add(new PropertyField(serializedObject.FindProperty("RouteMapUnvisitedMode"), "未走过节点：隐藏/锁定"));
         root.Add(galleryFoldout);
 
         // 5. 游戏启动设置 (Foldout)

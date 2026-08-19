@@ -12,7 +12,7 @@ public class MonoController : MonoBehaviour
 {
     private event UnityAction updateEvent;
 
-    void Start()
+    void Awake()
     {
         DontDestroyOnLoad(this.gameObject);
     }

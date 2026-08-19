@@ -82,6 +82,7 @@ public class VNovelizerSetup : EditorWindow
                     "Materials",
                     "VFX",
                     "VNPrefabs"
+                    // Videos 不进 Resources，见下方拷到 StreamingAssets
                 };
 
                 foreach (var folder in foldersToCopy)
@@ -110,6 +111,14 @@ public class VNovelizerSetup : EditorWindow
                     AddSceneToBuildSettings("Assets/Scenes/VNGamePlay.unity");
                     AddSceneToBuildSettings("Assets/Scenes/VNDebugScene.unity");
                 }
+
+                string videoSource = Path.Combine(resRootSource, "Videos");
+                string videoDest = Path.Combine(assetsRoot, "StreamingAssets/VNovelizerRes/Videos");
+                if (Directory.Exists(videoSource))
+                {
+                    Debug.Log("[Setup] 正在复制 Videos -> StreamingAssets...");
+                    CopyDirectory(videoSource, videoDest);
+                }
             }
         }
 
@@ -132,15 +141,29 @@ public class VNovelizerSetup : EditorWindow
         {
             var config = ScriptableObject.CreateInstance<VNProjectConfig>();
             config.ExcelSourceFolder = null;
+            config.DefaultScriptName = "Chapter001";
             AssetDatabase.CreateAsset(config, configPath);
             Debug.Log("[VNovelizer Setup] 已创建默认配置文件: " + configPath);
         }
+        else
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<VNProjectConfig>(configPath);
+            if (existing != null && (string.IsNullOrEmpty(existing.DefaultScriptName) || existing.DefaultScriptName == "Test101"))
+            {
+                existing.DefaultScriptName = "Chapter001";
+                EditorUtility.SetDirty(existing);
+            }
+        }
+
+        EnsureSampleCharacter();
+        AssetDatabase.SaveAssets();
 
         // 6. 确保包依赖（PrimeTween scoped registry + Package）
         EnsureManifestDependencies();
 
         // 7. 导入 TMP Essential Resources
         ImportTMPEssentialResources();
+        EnsureChineseTmpFont();
 
         // 8. 配置 Input System 为 Both 模式
         bool needRestart = ConfigureInputSystemBoth();
@@ -182,6 +205,56 @@ public class VNovelizerSetup : EditorWindow
         }
     }
 
+    private static void EnsureSampleCharacter()
+    {
+        const string folder = "Assets/Resources/VNovelizerRes/Characters";
+        const string path = folder + "/Test.asset";
+        if (AssetDatabase.LoadAssetAtPath<CharacterProfile>(path) != null)
+            return;
+
+        if (!Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
+
+        AssetDatabase.Refresh();
+
+        var profile = ScriptableObject.CreateInstance<CharacterProfile>();
+        profile.CharacterID = "Test";
+        profile.ElementSprites = new List<ElementSprite>
+        {
+            MakeElement("Default", folder + "/Test_Default.png"),
+            MakeElement("Happy", folder + "/Test_Happy.png"),
+            MakeElement("Angry", folder + "/Test_Angry.png"),
+            MakeElement("Scared", folder + "/Test_Scared.png")
+        };
+        profile.HeadSprites = new List<ElementSprite>(profile.ElementSprites);
+        AssetDatabase.CreateAsset(profile, path);
+        Debug.Log("[VNovelizer Setup] 已创建示例角色: " + path);
+    }
+
+    private static ElementSprite MakeElement(string emotion, string texturePath)
+    {
+        return new ElementSprite
+        {
+            Element = emotion,
+            Sprite = LoadFirstSprite(texturePath)
+        };
+    }
+
+    private static Sprite LoadFirstSprite(string texturePath)
+    {
+        Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(texturePath);
+        if (sprite != null) return sprite;
+
+        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(texturePath);
+        if (assets == null) return null;
+        for (int i = 0; i < assets.Length; i++)
+        {
+            Sprite item = assets[i] as Sprite;
+            if (item != null) return item;
+        }
+        return null;
+    }
+
     private static void CopyDirectory(string sourceDir, string destDir)
     {
         DirectoryInfo dir = new DirectoryInfo(sourceDir);
@@ -208,6 +281,10 @@ public class VNovelizerSetup : EditorWindow
             if (!File.Exists(tempPath))
             {
                 file.CopyTo(tempPath, false);
+                string metaSrc = file.FullName + ".meta";
+                string metaDest = tempPath + ".meta";
+                if (File.Exists(metaSrc) && !File.Exists(metaDest))
+                    File.Copy(metaSrc, metaDest);
             }
         }
 
@@ -329,6 +406,63 @@ public class VNovelizerSetup : EditorWindow
     }
 
     // ===== 7. 导入 TMP Essential Resources =====
+    private static void EnsureChineseTmpFont()
+    {
+        string[] candidates =
+        {
+            "Packages/com.fakecorps.vnovelizer/Runtime/PackageDefault/VNovelizerRes/Fonts/TMPFonts/SiYuan-Black-Normal SDF.asset",
+            "Assets/Resources/VNovelizerRes/Fonts/TMPFonts/SiYuan-Black-Normal SDF.asset"
+        };
+
+        TMPro.TMP_FontAsset font = null;
+        for (int i = 0; i < candidates.Length && font == null; i++)
+            font = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(candidates[i]);
+
+        if (font == null)
+        {
+            Debug.LogWarning("[Setup] 找不到思源黑体 SDF，跳过 TMP 中文字体配置");
+            return;
+        }
+
+        string settingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
+        Object settings = AssetDatabase.LoadAssetAtPath<Object>(settingsPath);
+        if (settings == null)
+            settings = Resources.Load<Object>("TMP Settings");
+        if (settings == null)
+        {
+            Debug.LogWarning("[Setup] 找不到 TMP Settings，跳过中文字体配置");
+            return;
+        }
+
+        var so = new SerializedObject(settings);
+        SerializedProperty defaultFont = so.FindProperty("m_defaultFontAsset");
+        if (defaultFont != null)
+            defaultFont.objectReferenceValue = font;
+
+        SerializedProperty fallbacks = so.FindProperty("m_fallbackFontAssets");
+        if (fallbacks != null && fallbacks.isArray)
+        {
+            bool exists = false;
+            for (int i = 0; i < fallbacks.arraySize; i++)
+            {
+                if (fallbacks.GetArrayElementAtIndex(i).objectReferenceValue == font)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists)
+            {
+                fallbacks.arraySize++;
+                fallbacks.GetArrayElementAtIndex(fallbacks.arraySize - 1).objectReferenceValue = font;
+            }
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(settings);
+        Debug.Log("[Setup] 已将 TMP 默认字体设为思源黑体: " + font.name);
+    }
+
     private static void ImportTMPEssentialResources()
     {
         var tmpSettings = AssetDatabase.LoadAssetAtPath<Object>("Assets/Resources/TMP Settings.asset");

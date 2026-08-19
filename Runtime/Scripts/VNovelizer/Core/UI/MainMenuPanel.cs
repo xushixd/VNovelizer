@@ -30,7 +30,6 @@ public class MainMenuPanel : BasePanel
     
     protected override void Awake()
     {
-        EnsureRouteMapButton();
         base.Awake();
         
         UIManager.GetInstance().Init();
@@ -367,41 +366,6 @@ public class MainMenuPanel : BasePanel
     }
     
     #endregion
-    
-    /// <summary>
-    /// 旧主菜单预制体没有路线图按钮时，复制画廊按钮放在它后面。
-    /// </summary>
-    private void EnsureRouteMapButton()
-    {
-        if (transform.Find("RouteMapBtn") != null) return;
-
-        Transform existing = FindDeepChild(transform, "RouteMapBtn");
-        if (existing != null) return;
-
-        Transform gallery = FindDeepChild(transform, "GalleryBtn");
-        if (gallery == null) return;
-
-        GameObject clone = Instantiate(gallery.gameObject, gallery.parent);
-        clone.name = "RouteMapBtn";
-        clone.transform.SetSiblingIndex(gallery.GetSiblingIndex() + 1);
-
-        TMP_Text label = clone.GetComponentInChildren<TMP_Text>(true);
-        if (label != null) label.text = "路线图";
-        Text legacy = clone.GetComponentInChildren<Text>(true);
-        if (legacy != null) legacy.text = "路线图";
-    }
-
-    private static Transform FindDeepChild(Transform root, string name)
-    {
-        for (int i = 0; i < root.childCount; i++)
-        {
-            Transform child = root.GetChild(i);
-            if (child.name == name) return child;
-            Transform found = FindDeepChild(child, name);
-            if (found != null) return found;
-        }
-        return null;
-    }
     
     #region 辅助方法
     

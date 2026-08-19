@@ -1,0 +1,141 @@
+{
+  "id": "001",
+  "title": "第一章",
+  "entrySegmentId": "001-0001",
+  "segments": [
+    {
+      "id": "001-0001",
+      "title": "开场",
+      "content": [
+        {
+          "id": "001-0001-00000",
+          "type": "Video",
+          "videoAssetId": "test_video",
+          "playback": "once",
+          "skippable": true,
+          "options": []
+        },
+        {
+          "id": "001-0001-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "",
+            "emotionId": ""
+          },
+          "text": "石阶尽头，风把铃铛吹得轻轻响。",
+          "stageCharacters": [],
+          "backgroundAssetId": "Shrine",
+          "voiceAssetId": "",
+          "bgmAssetId": "moonlight chill",
+          "options": []
+        },
+        {
+          "id": "001-0001-00002",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Test",
+            "emotionId": "Default"
+          },
+          "text": "你来了。我还以为今天不会再有人上来。",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Test",
+              "emotionId": "Default"
+            }
+          ],
+          "backgroundAssetId": "Shrine",
+          "voiceAssetId": "",
+          "bgmAssetId": "moonlight chill",
+          "options": []
+        },
+        {
+          "id": "001-0001-00003",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Test",
+            "emotionId": "Happy"
+          },
+          "text": "要不要先进去坐一会儿？里面比外面暖和。",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Test",
+              "emotionId": "Happy"
+            }
+          ],
+          "backgroundAssetId": "Shrine",
+          "voiceAssetId": "",
+          "bgmAssetId": "moonlight chill",
+          "options": [
+            {
+              "id": "001-0001-00003-01",
+              "text": "好，进去坐坐",
+              "result": "001-0002"
+            },
+            {
+              "id": "001-0001-00003-02",
+              "text": "我还是先在外面看看",
+              "result": "001-0003"
+            }
+          ]
+        }
+      ],
+      "nextSegmentId": ""
+    },
+    {
+      "id": "001-0002",
+      "title": "进去坐坐",
+      "content": [
+        {
+          "id": "001-0002-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Test",
+            "emotionId": "Happy"
+          },
+          "text": "看，我早就把位置留好了。今晚就先歇在这里吧。",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Test",
+              "emotionId": "Happy"
+            }
+          ],
+          "backgroundAssetId": "Sitting",
+          "voiceAssetId": "",
+          "bgmAssetId": "piano lofi",
+          "options": []
+        }
+      ],
+      "nextSegmentId": ""
+    },
+    {
+      "id": "001-0003",
+      "title": "先在外面",
+      "content": [
+        {
+          "id": "001-0003-00001",
+          "type": "Dialogue",
+          "speaker": {
+            "characterId": "Test",
+            "emotionId": "Scared"
+          },
+          "text": "也行……只是天马上要黑了。你可别走太远。",
+          "stageCharacters": [
+            {
+              "slot": "middle",
+              "characterId": "Test",
+              "emotionId": "Scared"
+            }
+          ],
+          "backgroundAssetId": "Shrine",
+          "voiceAssetId": "",
+          "bgmAssetId": "moonlight chill",
+          "options": []
+        }
+      ],
+      "nextSegmentId": ""
+    }
+  ]
+}
