@@ -220,7 +220,7 @@ public static class VNLocalizationSyncUtility
         string csvFolderPath = config.GetCsvOutputPath();
         if (string.IsNullOrEmpty(csvFolderPath))
         {
-            error = "VNProjectConfig 的 CsvOutputFolder 未配置。";
+            error = "VNProjectConfig 的 VNScriptResPath 未配置。";
             return false;
         }
 
@@ -296,7 +296,7 @@ public static class VNLocalizationSyncUtility
         string csvFolderPath = config.GetCsvOutputPath();
         if (string.IsNullOrEmpty(csvFolderPath))
         {
-            error = "VNProjectConfig 的 CsvOutputFolder 未配置。";
+            error = "VNProjectConfig 的 VNScriptResPath 未配置。";
             return false;
         }
 

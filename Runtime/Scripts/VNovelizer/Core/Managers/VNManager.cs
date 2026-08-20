@@ -961,7 +961,8 @@ public class VNManager : BaseManager<VNManager>
         if (currentContent != null && currentContent.IsVideo())
         {
             lastLine = StoryLines[CurrentLineIndex];
-            PlayChapterVideo(currentContent);
+            if (!(chapterVideoPlaying && lastLine != null && lastLine.ID == currentContent.id))
+                PlayChapterVideo(currentContent);
             _usePersistedCharacterSlotsWhenCsvCharCellsEmpty = false;
             return;
         }
@@ -1156,7 +1157,8 @@ public class VNManager : BaseManager<VNManager>
         if (immediateContent != null && immediateContent.IsVideo())
         {
             lastLine = StoryLines[CurrentLineIndex];
-            PlayChapterVideo(immediateContent);
+            if (!(chapterVideoPlaying && lastLine != null && lastLine.ID == immediateContent.id))
+                PlayChapterVideo(immediateContent);
             return;
         }
 
@@ -1634,10 +1636,10 @@ public class VNManager : BaseManager<VNManager>
         chapterVideoSkippable = content.skippable;
         chapterVideoPlaying = true;
 
-        GameObject videoGo = VNAPI.PlayVideo(content.videoAssetId, () =>
-        {
-            FinishChapterVideo(content);
-        }, loop, holdLastFrame);
+        System.Action onEnded = loop
+            ? (System.Action)null
+            : () => FinishChapterVideo(content);
+        GameObject videoGo = VNAPI.PlayVideo(content.videoAssetId, onEnded, loop, holdLastFrame);
 
         if (videoGo != null)
             BindVideoHud(videoGo, chapterVideoSkippable);
@@ -1645,7 +1647,7 @@ public class VNManager : BaseManager<VNManager>
 
     private void FinishChapterVideo(DialogueContent content)
     {
-        if (!chapterVideoPlaying && !content.HasOptions()) return;
+        if (!chapterVideoPlaying) return;
 
         if (content != null && content.HasOptions())
         {
@@ -1655,9 +1657,13 @@ public class VNManager : BaseManager<VNManager>
             return;
         }
 
-        chapterVideoPlaying = false;
         StopChapterVideo();
-        NextLine();
+        if (!MoveToNextContent())
+        {
+            if (isReplayMode) EndReplay();
+            return;
+        }
+        PlayCurrentLine();
     }
 
     private void StopStoryAudio()

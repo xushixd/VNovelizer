@@ -48,13 +48,6 @@ public class VNProjectConfig : ScriptableObject
         }
     }
 
-    [Header("=== 编辑器工具路径 (Editor Only) ===")]
-    [Tooltip("Excel源文件所在的文件夹 (拖拽文件夹到这里)")]
-    public Object ExcelSourceFolder;
-
-    [Tooltip("CSV生成的目标文件夹 (拖拽文件夹到这里)")]
-    public Object CsvOutputFolder;
-
     [Tooltip("启用后，每次从 Excel 切回 Unity Editor 时自动检测并转换被修改的 Excel 文件")]
     public bool AutoConvertExcel = true;
 
@@ -195,16 +188,15 @@ public class VNProjectConfig : ScriptableObject
 #if UNITY_EDITOR
     public string GetExcelFolderPath()
     {
-        if (ExcelSourceFolder == null) return "";
-        
-        string path = AssetDatabase.GetAssetPath(ExcelSourceFolder);
-        return path;
+        return "Assets/Resources/VNovelizerRes/ExcelVNScripts";
     }
 
     public string GetCsvOutputPath()
     {
-        if (CsvOutputFolder == null) return "";
-        return AssetDatabase.GetAssetPath(CsvOutputFolder);
+        string relative = string.IsNullOrEmpty(VNScriptResPath)
+            ? "VNovelizerRes/VNScripts"
+            : VNScriptResPath.Replace("\\", "/").Trim('/');
+        return "Assets/Resources/" + relative;
     }
 #endif
 }

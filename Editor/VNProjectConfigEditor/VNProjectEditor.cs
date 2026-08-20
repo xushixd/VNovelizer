@@ -22,12 +22,6 @@ public class VNProjectConfigEditor : Editor
         header.style.alignSelf = Align.Center;
         root.Add(header);
 
-        // 2. Excel 工具设置
-        var excelGroup = CreateGroup("Excel 导表工具 (Editor Only)");
-        excelGroup.Add(new PropertyField(serializedObject.FindProperty("ExcelSourceFolder"), "Excel 源文件夹"));
-        excelGroup.Add(new PropertyField(serializedObject.FindProperty("CsvOutputFolder"), "CSV 输出文件夹"));
-        root.Add(excelGroup);
-
         // 3. 运行时资源路径 (Foldout)
         var pathsFoldout = new Foldout { text = "运行时资源路径 (Resources)", value = false };
         pathsFoldout.Add(new PropertyField(serializedObject.FindProperty("VNScriptResPath"), "剧本路径"));
@@ -160,38 +154,6 @@ public class VNProjectConfigEditor : Editor
         root.Add(aesFoldout);
 
         return root;
-    }
-
-    // --- 辅助方法 ---
-
-    private VisualElement CreateGroup(string title)
-    {
-        var box = new Box();
-        box.style.marginTop = 10;
-        box.style.marginBottom = 10;
-        box.style.paddingTop = 5;
-        box.style.paddingBottom = 5;
-        box.style.paddingLeft = 5;
-        box.style.paddingRight = 5;
-
-        // 【修复】新版 API 必须分别设置四边
-        box.style.borderTopWidth = 1;
-        box.style.borderBottomWidth = 1;
-        box.style.borderLeftWidth = 1;
-        box.style.borderRightWidth = 1;
-
-        Color borderColor = new Color(0.3f, 0.3f, 0.3f);
-        box.style.borderTopColor = borderColor;
-        box.style.borderBottomColor = borderColor;
-        box.style.borderLeftColor = borderColor;
-        box.style.borderRightColor = borderColor;
-
-        var label = new Label(title);
-        label.style.unityFontStyleAndWeight = FontStyle.Bold;
-        label.style.marginBottom = 5;
-        box.Add(label);
-
-        return box;
     }
 
     private void CheckLength(string val, int targetLen, HelpBox errorBox)

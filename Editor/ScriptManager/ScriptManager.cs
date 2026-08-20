@@ -52,9 +52,9 @@ public class ScriptManagerWindow : EditorWindow
     public void CreateGUI()
     {
         var config = VNProjectConfig.Instance;
-        if (config == null || config.ExcelSourceFolder == null || string.IsNullOrEmpty(config.VNScriptResPath))
+        if (config == null || string.IsNullOrEmpty(config.VNScriptResPath))
         {
-            var error = new Label("请先在 VNProjectConfig 中配置 Excel 源文件夹和 VNScriptResPath！")
+            var error = new Label("请先在 VNProjectConfig 中配置 VNScriptResPath！")
             {
                 style = { color = Color.red, fontSize = 16, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 50 }
             };
@@ -62,7 +62,7 @@ public class ScriptManagerWindow : EditorWindow
             return;
         }
 
-        excelFolderPath = Path.GetFullPath(AssetDatabase.GetAssetPath(config.ExcelSourceFolder));
+        excelFolderPath = Path.GetFullPath(config.GetExcelFolderPath());
         runtimeScriptFolderPath = Path.Combine(Application.dataPath, "Resources", config.VNScriptResPath);
         Directory.CreateDirectory(runtimeScriptFolderPath);
 

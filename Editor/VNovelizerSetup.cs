@@ -132,7 +132,6 @@ public class VNovelizerSetup : EditorWindow
         if (!File.Exists(assetsRoot + "/Resources/VNProjectConfig.asset"))
         {
             var config = ScriptableObject.CreateInstance<VNProjectConfig>();
-            config.ExcelSourceFolder = null;
             config.DefaultScriptName = "Chapter001";
             AssetDatabase.CreateAsset(config, configPath);
             Debug.Log("[VNovelizer Setup] 已创建默认配置文件: " + configPath);

@@ -26,7 +26,7 @@ public class ExcelToCsvConverter : EditorWindow
         // 3. 路径校验
         if (string.IsNullOrEmpty(excelFolderPath) || string.IsNullOrEmpty(csvOutputPath))
         {
-            Debug.LogError("路径配置未填写！请检查 Resources/VNProjectConfig 配置文件中的 ExcelSourceFolder 和 CsvOutputFolder。");
+            Debug.LogError("找不到 Excel 或 CSV 路径。Excel 默认在 Assets/Resources/VNovelizerRes/ExcelVNScripts，CSV 输出使用 VNScriptResPath。");
             return;
         }
 

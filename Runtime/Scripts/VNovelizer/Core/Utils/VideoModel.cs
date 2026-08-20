@@ -17,6 +17,7 @@ public class VideoModel : MonoBehaviour
     private bool loopAfterEnd;
     private bool holdLastFrame;
     private bool firstPlayEnded;
+    private bool playbackStarted;
 
     // Unity VideoPlayer 支持的视频格式
     private static readonly string[] SupportedExtensions = { ".mp4", ".mov", ".webm", ".avi", ".asf", ".wmv" };
@@ -47,6 +48,7 @@ public class VideoModel : MonoBehaviour
         loopAfterEnd = loopAfterFirstPlay;
         holdLastFrame = keepLastFrame;
         firstPlayEnded = false;
+        playbackStarted = false;
 
         string subPath = VNProjectConfig.Instance != null && !string.IsNullOrEmpty(VNProjectConfig.Instance.VideoResPath)
             ? VNProjectConfig.Instance.VideoResPath
@@ -186,17 +188,21 @@ public class VideoModel : MonoBehaviour
         rawImage.texture = videoPlayer.texture;
         videoPlayer.isLooping = loopAfterEnd;
         videoPlayer.Play();
+        playbackStarted = true;
     }
 
     private void OnLoopPointReached(VideoPlayer vp)
     {
+        if (!playbackStarted || firstPlayEnded) return;
+        if (vp != null && vp.time < 0.25)
+            return;
+
         if (loopAfterEnd)
         {
-            if (!firstPlayEnded)
-            {
-                firstPlayEnded = true;
-                onFirstEnd?.Invoke();
-            }
+            firstPlayEnded = true;
+            Action firstEnd = onFirstEnd;
+            onFirstEnd = null;
+            firstEnd?.Invoke();
             return;
         }
 
@@ -229,6 +235,8 @@ public class VideoModel : MonoBehaviour
     {
         onFirstEnd = null;
         onComplete = null;
+        if (videoPlayer != null)
+            videoPlayer.Stop();
         if (this != null && gameObject != null)
             Destroy(gameObject);
     }
